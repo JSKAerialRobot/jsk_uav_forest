@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/tongtybj/jsk_uav_forest.svg?branch=master)](https://travis-ci.org/tongtybj/jsk_uav_forest)
+
 ## Introduction
 
 This is the repository for the uav challenge in forest:

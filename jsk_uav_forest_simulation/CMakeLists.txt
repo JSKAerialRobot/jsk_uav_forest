@@ -16,15 +16,19 @@ find_package(gazebo REQUIRED)
 
 
 include_directories(
-  include
+  #include
   ${catkin_INCLUDE_DIRS}
 )
 
 catkin_package(
-  INCLUDE_DIRS include
+  #INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS ${PACKAGE_DEPENDENCIES}
 )
+
+
+# Get ROS_DISTRO
+add_definitions(-D$ENV{ROS_DISTRO})
 
 add_executable(uav_teleop_keyboard src/uav_teleop_keyboard.cpp)
 target_link_libraries(uav_teleop_keyboard ${catkin_LIBRARIES})

@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package>
+  <name>jsk_uav_forest</name>
+  <version>0.0.0</version>
+  <description>
+      Software of JSK lab in uav forest challenge.
+  </description>
+
+  <maintainer email="chou@jsk.imi.i.u-tokyo.ac.jp">Moju Zhao</maintainer>
+  <maintainer email="shifan@jsk.imi.i.u-tokyo.ac.jp">Fan Shi</maintainer>
+  <maintainer email="anzai@jsk.imi.i.u-tokyo.ac.jp">Tomoki Anzai</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://www.jsk.t.u-tokyo.ac.jp/</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>jsk_uav_forest_perception</run_depend>
+  <run_depend>jsk_uav_forest_motion</run_depend>
+  <run_depend>jsk_uav_forest_simulation</run_depend>
+
+  <export>
+    <metapackage/>
+  </export>
+</package>

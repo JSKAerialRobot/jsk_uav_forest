@@ -39,8 +39,6 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float64.h>
-#include <cstdlib>
-
 #ifdef kinetic
 #include <hector_uav_msgs/EnableMotors.h>
 #endif
@@ -73,8 +71,8 @@ private:
   geometry_msgs::Twist cmd;
   ros::NodeHandle n_;
   ros::Publisher vel_pub_;
-  ros::ServiceClient motor_on_client_;
 #ifdef kinetic
+  ros::ServiceClient motor_on_client_;
   hector_uav_msgs::EnableMotors srv_;
 #endif
 
@@ -84,7 +82,7 @@ public:
     cmd.linear.x = cmd.linear.y = cmd.angular.z = 0;
 
     vel_pub_ = n_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-#ifdef KINETIC
+#ifdef kinetic
     srv_.request.enable = true;
     motor_on_client_ = n_.serviceClient<hector_uav_msgs::EnableMotors>("/enable_motors");
 #endif

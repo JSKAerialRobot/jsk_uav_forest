@@ -5,6 +5,7 @@ set(PACKAGE_DEPENDENCIES
   roscpp
   std_msgs
   geometry_msgs
+  hector_uav_msgs
 )
 
 find_package(cmake_modules REQUIRED)

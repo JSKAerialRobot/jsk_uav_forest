@@ -39,6 +39,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float64.h>
+#include <hector_uav_msgs/EnableMotors.h>
 
 #define KEYCODE_A 0x61
 #define KEYCODE_D 0x64
@@ -64,31 +65,32 @@
 class TeleopUAVKeyboard
 {
 private:
-    double walk_vel, run_vel, yaw_rate, yaw_rate_run, vertical_vel;
-    geometry_msgs::Twist cmd;
-    std_msgs::Float64 gripper;
-    ros::NodeHandle n_;
-    ros::Publisher vel_pub_;
-    ros::Publisher grip_pub_;
+  double walk_vel, run_vel, yaw_rate, yaw_rate_run, vertical_vel;
+  geometry_msgs::Twist cmd;
+  ros::NodeHandle n_;
+  ros::Publisher vel_pub_;
+  ros::ServiceClient motor_on_client_;
+  hector_uav_msgs::EnableMotors srv_;
 
 public:
-    void init()
-    {
-        cmd.linear.x = cmd.linear.y = cmd.angular.z = 0;
-        gripper.data = 0;
+  void init()
+  {
+    cmd.linear.x = cmd.linear.y = cmd.angular.z = 0;
 
-        vel_pub_ = n_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-        grip_pub_ = n_.advertise<std_msgs::Float64>("/r_gripper_controller/command", 1);
-        ros::NodeHandle n_private("~");
-        n_private.param("walk_vel", walk_vel, 1.0);
-        n_private.param("run_vel", run_vel, 4.0);
-        n_private.param("yaw_rate", yaw_rate, 1.0);
-        n_private.param("yaw_run_rate", yaw_rate_run, 1.5);
-        n_private.param("vertical_vel", vertical_vel, 1.0);
-    }
+    vel_pub_ = n_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    motor_on_client_ = n_.serviceClient<hector_uav_msgs::EnableMotors>("/enable_motors");
+    ros::NodeHandle n_private("~");
+    n_private.param("walk_vel", walk_vel, 1.0);
+    n_private.param("run_vel", run_vel, 4.0);
+    n_private.param("yaw_rate", yaw_rate, 1.0);
+    n_private.param("yaw_run_rate", yaw_rate_run, 1.5);
+    n_private.param("vertical_vel", vertical_vel, 1.0);
 
-    ~TeleopUAVKeyboard()   { }
-    void keyboardLoop();
+    srv_.request.enable = true;
+  }
+
+  ~TeleopUAVKeyboard()   { }
+  void keyboardLoop();
 };
 
 int kfd = 0;
@@ -96,146 +98,129 @@ struct termios cooked, raw;
 
 void quit(int sig)
 {
-    tcsetattr(kfd, TCSANOW, &cooked);
-    exit(0);
+  tcsetattr(kfd, TCSANOW, &cooked);
+  exit(0);
 }
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "pr2_base_keyboard");
+  ros::init(argc, argv, "pr2_base_keyboard");
 
-    TeleopUAVKeyboard tpk;
-    tpk.init();
+  TeleopUAVKeyboard tpk;
+  tpk.init();
 
-    signal(SIGINT, quit);
+  signal(SIGINT, quit);
 
-    tpk.keyboardLoop();
+  tpk.keyboardLoop();
 
-    return(0);
+  return(0);
 }
 
 void TeleopUAVKeyboard::keyboardLoop()
 {
-    char c;
-    bool dirty = false;
-    bool dirtygripper = false;
+  char c;
+  bool dirty = false;
 
-    // get the console in raw mode
-    tcgetattr(kfd, &cooked);
-    memcpy(&raw, &cooked, sizeof(struct termios));
-    raw.c_lflag &= ~(ICANON | ECHO);
-    // Setting a new line, then end of file
-    raw.c_cc[VEOL] = 1;
-    raw.c_cc[VEOF] = 2;
-    tcsetattr(kfd, TCSANOW, &raw);
+  // get the console in raw mode
+  tcgetattr(kfd, &cooked);
+  memcpy(&raw, &cooked, sizeof(struct termios));
+  raw.c_lflag &= ~(ICANON | ECHO);
+  // Setting a new line, then end of file
+  raw.c_cc[VEOL] = 1;
+  raw.c_cc[VEOF] = 2;
+  tcsetattr(kfd, TCSANOW, &raw);
 
-    puts("Reading from keyboard");
-    puts("---------------------------");
-    puts("Use 'WASD' to horizontal translate");
-    puts("Use 'QE' to yaw");
-    puts("Use 'PL' to up/down");
-    puts("Use 'H' to hover");
-    puts("Press 'Shift' to run");
+  puts("Reading from keyboard");
+  puts("---------------------------");
+  puts("Use 'WASD' to horizontal translate");
+  puts("Use 'QE' to yaw");
+  puts("Use 'PL' to up/down");
+  puts("Use 'H' to hover");
+  puts("Press 'Shift' to run");
 
 
-    for (;;)
+  for (;;)
     {
-        // get the next event from the keyboard
-        if (read(kfd, &c, 1) < 0)
+      // get the next event from the keyboard
+      if (read(kfd, &c, 1) < 0)
         {
-            perror("read():");
-            exit(-1);
+          perror("read():");
+          exit(-1);
         }
 
-        cmd.linear.x = cmd.linear.y = cmd.angular.z = cmd.linear.z = 0;
+      cmd.linear.x = cmd.linear.y = cmd.angular.z = cmd.linear.z = 0;
 
-        switch (c)
+      switch (c)
         {
-        // Walking
+          // Walking
         case KEYCODE_W:
-            cmd.linear.x = walk_vel;
-            dirty = true;
-            break;
+          cmd.linear.x = walk_vel;
+          dirty = true;
+          break;
         case KEYCODE_S:
-            cmd.linear.x = - walk_vel;
-            dirty = true;
-            break;
+          cmd.linear.x = - walk_vel;
+          dirty = true;
+          break;
         case KEYCODE_A:
-            cmd.linear.y = walk_vel;
-            dirty = true;
-            break;
+          cmd.linear.y = walk_vel;
+          dirty = true;
+          break;
         case KEYCODE_D:
-            cmd.linear.y = - walk_vel;
-            dirty = true;
-            break;
+          cmd.linear.y = - walk_vel;
+          dirty = true;
+          break;
         case KEYCODE_Q:
-            cmd.angular.z = yaw_rate;
-            dirty = true;
-            break;
+          cmd.angular.z = yaw_rate;
+          dirty = true;
+          break;
         case KEYCODE_E:
-            cmd.angular.z = - yaw_rate;
-            dirty = true;
-            break;
+          cmd.angular.z = - yaw_rate;
+          dirty = true;
+          break;
         case KEYCODE_P:
-            cmd.linear.z = vertical_vel;
-            dirty = true;
-            break;
+          motor_on_client_.call(srv_);
+          cmd.linear.z = vertical_vel;
+          dirty = true;
+          break;
         case KEYCODE_L:
-            cmd.linear.z = - vertical_vel;
-            dirty = true;
-            break;
+          cmd.linear.z = - vertical_vel;
+          dirty = true;
+          break;
         case KEYCODE_H:
-            dirty = true;
-            break;
+          dirty = true;
+          break;
 
 
-
-            // Running
+          // Running
         case KEYCODE_W_CAP:
-            cmd.linear.x = run_vel;
-            dirty = true;
-            break;
+          cmd.linear.x = run_vel;
+          dirty = true;
+          break;
         case KEYCODE_S_CAP:
-            cmd.linear.x = - run_vel;
-            dirty = true;
-            break;
+          cmd.linear.x = - run_vel;
+          dirty = true;
+          break;
         case KEYCODE_A_CAP:
-            cmd.linear.y = run_vel;
-            dirty = true;
-            break;
+          cmd.linear.y = run_vel;
+          dirty = true;
+          break;
         case KEYCODE_D_CAP:
-            cmd.linear.y = - run_vel;
-            dirty = true;
-            break;
+          cmd.linear.y = - run_vel;
+          dirty = true;
+          break;
         case KEYCODE_Q_CAP:
-            cmd.angular.z = yaw_rate_run;
-            dirty = true;
-            break;
+          cmd.angular.z = yaw_rate_run;
+          dirty = true;
+          break;
         case KEYCODE_E_CAP:
-            cmd.angular.z = - yaw_rate_run;
-            dirty = true;
-            break;
-            // Gripper
-        case KEYCODE_O:
-            gripper.data += 0.01;
-            gripper.data = gripper.data > 0.5?0.5:gripper.data;
-            dirtygripper = true;
-            break;
-        case KEYCODE_C:
-            gripper.data -= 0.01;
-            gripper.data = gripper.data < 0?0:gripper.data;
-            dirtygripper = true;
-            dirty = true;
-            break;
+          cmd.angular.z = - yaw_rate_run;
+          dirty = true;
+          break;
         }
 
-        if (dirty == true)
+      if (dirty == true)
         {
-            vel_pub_.publish(cmd);
-        }
-        if (dirtygripper == true)
-        {
-            grip_pub_.publish(gripper);
+          vel_pub_.publish(cmd);
         }
     }
 }

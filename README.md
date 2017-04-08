@@ -27,5 +27,3 @@ $ roslaunch jsk_uav_forest_simulation forest_simulation.launch
 ```
 $ roslaunch jsk_uav_forest_simulation forest_simulation.launch manual:=true
 ```
-
-        

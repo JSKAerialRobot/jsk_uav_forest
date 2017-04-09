@@ -5,7 +5,6 @@ set(PACKAGE_DEPENDENCIES
   roscpp
   std_msgs
   geometry_msgs
-  hector_uav_msgs
 )
 
 find_package(cmake_modules REQUIRED)
@@ -25,10 +24,6 @@ catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS ${PACKAGE_DEPENDENCIES}
 )
-
-
-# Get ROS_DISTRO
-add_definitions(-D$ENV{ROS_DISTRO})
 
 add_executable(uav_teleop_keyboard src/uav_teleop_keyboard.cpp)
 target_link_libraries(uav_teleop_keyboard ${catkin_LIBRARIES})

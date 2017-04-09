@@ -39,7 +39,7 @@ before_script:
   # source dependencies: install using wstool.
   - cd ~/catkin_ws/src
   - wstool init
-  - wstool merge https://raw.githubusercontent.com/tu-darmstadt-ros-pkg/hector_quadrotor/${ROS_DISTRO}-devel/tutorials.rosinstall
+  - wstool merge https://raw.githubusercontent.com/tongtybj/jsk_uav_forest/master/jsk_uav_forest.rosinstall
   - wstool up
 
   # package depdencies: install using rosdep.

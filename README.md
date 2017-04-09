@@ -12,7 +12,7 @@ mkdir <catkin_ws>
 cd <catkin_ws>
 wstool init src
 wstool set -t src jsk_uav_forest http://github.com/tongtybj/jsk_uav_forest --git
-wstool merge -t src https://raw.githubusercontent.com/tongtybj/jsk_uav_forest/jsk_uav_forest.rosinstall
+wstool merge -t src https://raw.githubusercontent.com/tongtybj/jsk_uav_forest/master/jsk_uav_forest.rosinstall
 wstool update -t src
 rosdep install -y -r --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 catkin build

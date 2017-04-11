@@ -112,7 +112,7 @@ class CircleMotion:
         self.control_velocity_msg_.linear.x = (local_circle_center_pos[0] - radius) * 1.0
         self.control_velocity_msg_.linear.y = 0.3
         self.control_velocity_msg_.linear.z = (self.target_pos_[2] - local_circle_center_pos[2]) * 1.0
-        self.control_velocity_msg_.angular.z = (local_circle_center_pos[1]) * 2.0
+        self.control_velocity_msg_.angular.z = (local_circle_center_pos[1]) * 2.0 - self.control_velocity_msg_.linear.y / radius
         self.vel_pub_.publish(self.control_velocity_msg_)
 
     def controlCallback(self, event):

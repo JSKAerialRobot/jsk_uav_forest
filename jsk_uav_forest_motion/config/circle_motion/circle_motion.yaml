@@ -1,0 +1,15 @@
+#circle motion params
+
+control_rate : 20
+
+takeoff_height : 1.0
+nav_pos_pgain : 1.0
+nav_yaw_pgain : 1.0
+nav_vel_thresh : 1.5
+nav_yaw_vel_thresh : 1.0
+nav_pos_convergence_thresh : 0.1
+nav_vel_convergence_thresh : 0.1
+circle_radius : 1.0
+circle_x_gain : 1.0
+circle_y_vel : 0.5
+circle_yaw_pgain : 2.0

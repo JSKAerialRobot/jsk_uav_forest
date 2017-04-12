@@ -140,7 +140,7 @@
           <geometry>
             <cylinder>
               <length>0.3</length>
-              <radius>0.21</radius>
+              <radius>0.11</radius>
             </cylinder>
           </geometry>
         </collision>
@@ -148,7 +148,7 @@
           <geometry>
             <cylinder>
               <length>0.3</length>
-              <radius>0.21</radius>
+              <radius>0.11</radius>
             </cylinder>
           </geometry>
           <material>

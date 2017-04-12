@@ -1,0 +1,10 @@
+<class_libraries>
+  <library path="lib/libjsk_laser_scan_filters">
+    <class name="laser_filters/ScanTreeFilter" type="laser_filters::ScanTreeFilter"
+	    base_class_type="filters::FilterBase<sensor_msgs::LaserScan>">
+      <description>
+	This is a filter which extract tree from a laser.
+      </description>
+    </class>
+  </library>
+</class_libraries>

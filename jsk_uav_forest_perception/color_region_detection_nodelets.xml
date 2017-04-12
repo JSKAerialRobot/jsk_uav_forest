@@ -1,0 +1,7 @@
+<library path="lib/libcolor_region_detection">
+  <class name="color_region_detection/ColorRegionDetector" type="color_region_detection::ColorRegionDetector" base_class_type="nodelet::Nodelet">
+    <description>
+      Nodelet for color region detector based on hsv filter.
+    </description>
+  </class>
+</library>

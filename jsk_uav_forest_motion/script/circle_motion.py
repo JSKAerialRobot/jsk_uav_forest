@@ -34,8 +34,8 @@ class CircleMotion:
         self.scan_filtered_wood_topic_name_ = rospy.get_param("~scan_filtered_wood_topic_name", "scan_filtered_foot")
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         
-        self.nav_pos_pgain_ = rospy.get_param("~nav_pos_pgain", 1.0)
         self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.0)
+        self.nav_pos_pgain_ = rospy.get_param("~nav_pos_pgain", 1.0)
         self.nav_yaw_pgain_ = rospy.get_param("~nav_yaw_pgain", 1.0)
         self.nav_vel_thresh_ = rospy.get_param("~nav_vel_thresh", 2.0)
         self.nav_yaw_vel_thresh_ = rospy.get_param("~nav_yaw_vel_thresh", 1.0)
@@ -44,7 +44,7 @@ class CircleMotion:
         self.circle_radius_ = rospy.get_param("~circle_radius", 1.0);
         self.circle_x_gain_ = rospy.get_param("~circle_x_gain", 1.0);
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5);
-        self.circle_yaw_gain_ = rospy.get_param("~circle_yaw_gain", 2.0)
+        self.circle_yaw_pgain_ = rospy.get_param("~circle_yaw_pgain", 2.0)
         
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -79,6 +79,9 @@ class CircleMotion:
         self.uav_yaw_overflow_ = 0
         self.accumulated_yaw_ = 0.0
         self.circle_initial_yaw_ = 0.0
+        
+        self.GLOBAL_FRAME_ = 0
+        self.LOCAL_FRAME_ = 1
 
     def odomCallback(self, msg):
         self.odom_ = msg
@@ -104,16 +107,24 @@ class CircleMotion:
         else:
             return False
 
-    def goPos(self, target_pos, target_yaw):
-        delta_pos = target_pos - self.uav_pos_
-        delta_yaw = target_yaw - self.uav_yaw_
-        
+    def goPos(self, target_pos, target_yaw, frame):
+        if frame == self.GLOBAL_FRAME_:
+            rot_mat = np.array([[math.cos(self.uav_yaw_), math.sin(self.uav_yaw_), 0],[-math.sin(self.uav_yaw_), math.cos(self.uav_yaw_), 0],[0, 0, 1]])
+            local_target_pos = np.dot(rot_mat, target_pos - self.uav_pos_)
+            delta_pos = local_target_pos 
+            delta_yaw = target_yaw - self.uav_yaw_
+        elif frame == self.LOCAL_FRAME_:
+            delta_pos = target_pos
+            delta_yaw = target_yaw
+        else:
+            return
+
         nav_vel = delta_pos * self.nav_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
         if np.linalg.norm(nav_vel) > self.nav_vel_thresh_:
             nav_vel *= (self.nav_vel_thresh_ / np.linalg.norm(nav_vel))
-        if nav_yaw_vel > self.nav_yaw_vel_thresh_:
-            nav_yaw_vel = self.nav_yaw_vel_thresh_
+        if abs(nav_yaw_vel) > self.nav_yaw_vel_thresh_:
+            nav_yaw_vel *= self.nav_yaw_vel_thresh_ / abs(nav_yaw_vel)
         
         self.control_velocity_msg_.linear.x = nav_vel[0]
         self.control_velocity_msg_.linear.y = nav_vel[1]
@@ -128,7 +139,7 @@ class CircleMotion:
         self.control_velocity_msg_.linear.x = (math.sqrt(local_circle_center_pos[0] ** 2 + local_circle_center_pos[1] ** 2) - self.circle_radius_) * self.circle_x_gain_
         self.control_velocity_msg_.linear.y = self.circle_y_vel_
         self.control_velocity_msg_.linear.z = (self.target_pos_[2] - local_circle_center_pos[2]) * self.nav_pos_pgain_
-        self.control_velocity_msg_.angular.z = (local_circle_center_pos[1]) * self.circle_yaw_gain_ - self.control_velocity_msg_.linear.y / radius
+        self.control_velocity_msg_.angular.z = (local_circle_center_pos[1]) * self.circle_yaw_pgain_ - self.control_velocity_msg_.linear.y / radius
         self.vel_pub_.publish(self.control_velocity_msg_)
         if self.use_dji_ == True:
             self.drone_.velocity_control(0, self.control_velocity_msg_.linear.x ,self.control_velocity_msg_.linear.y, self.control_velocity_msg_.linear.z, self.control_velocity_msg_.angular.z) #machine frame
@@ -143,20 +154,20 @@ class CircleMotion:
             self.initial_pos_ = np.array(self.target_pos_)
             self.target_yaw_ = self.uav_yaw_
             self.target_pos_[2] = self.takeoff_height_ #takeoff
-            self.goPos(self.target_pos_, self.target_yaw_)
+            self.goPos(self.target_pos_, self.target_yaw_, self.GLOBAL_FRAME_)
             if self.use_dji_ == True:
                 self.drone_.takeoff()
             self.state_machine_ = self.TAKEOFF_STATE_
             rospy.loginfo("take off")
 
         elif self.state_machine_ == self.TAKEOFF_STATE_:
-            self.goPos(self.target_pos_, self.target_yaw_)
+            self.goPos(self.target_pos_, self.target_yaw_, self.GLOBAL_FRAME_)
             if self.isConvergent(self.target_pos_):
                 self.target_pos_[0] = -1.0
                 self.state_machine_ = self.APPROACHING_TO_WOOD_STATE_
         
         elif self.state_machine_ == self.APPROACHING_TO_WOOD_STATE_:
-            self.goPos(self.target_pos_, self.target_yaw_)
+            self.goPos(self.target_pos_, self.target_yaw_, self.GLOBAL_FRAME_)
             if self.isConvergent(self.target_pos_):
                 self.state_machine_ = self.CIRCLE_MOTION_STATE_
                 self.circle_initial_yaw_ = self.accumulated_yaw_        
@@ -170,9 +181,9 @@ class CircleMotion:
                 self.state_machine_ = self.RETURN_HOME_STATE_
 
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
-            self.target_pos_ = self.initial_pos_
-            print(self.initial_pos_)
-            self.goPos(self.target_pos_, 0)
+            self.target_pos_ = np.array(self.initial_pos_)
+            self.target_pos_[2] = self.takeoff_height_
+            self.goPos(self.target_pos_, 0, self.GLOBAL_FRAME_)
 
         self.state_machine_pub_.publish(self.state_name_[self.state_machine_])
 

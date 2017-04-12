@@ -2,7 +2,8 @@
 <launch>
   <arg name="use_dji" default="False" />
 
-  ######### Motion Node #########
+    ######### Motion Node #########
   <node pkg="jsk_uav_forest_motion" type="circle_motion.py" name="circle_motion" output="screen" args="$(arg use_dji)">
+    <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
   </node>
 </launch>

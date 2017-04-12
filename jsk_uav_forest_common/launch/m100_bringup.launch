@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="dji_key" default="ed59ebb66de2a99221de11485dbc4a06095b70a82db07a313115e2273ae7b6c7"/>
+  <arg name="use_guidance" default="True" />
+  <arg name="use_pointgrey" default="True" />
+  <arg name="use_hokuyo" default="True" />
+  <arg name="use_zed" default="False" />
+
+  ############## DJI SDK bringup #############################
+  <node pkg="dji_sdk" type="dji_sdk_node" name="dji_sdk" output="screen">
+    <!-- node parameters -->
+    <param name="drone_version" type="string" value="M100"/>
+    <param name="serial_name" type="string" value="/dev/ttyUSB0"/>
+    <param name="baud_rate" type="int" value="230400"/>
+    <param name="app_id" type="int" value="1031959"/>
+    <param name="app_version" type="int" value="1"/>
+    <param name="app_bundle_id" type="string" value="Welcome to use dji-sdk"/>
+    <param name="enc_key" type="string" value="$(arg dji_key)"/>
+    <param name="groundstation_enable" type="int" value="1"/>
+  </node>
+
+  ############## Point Grey Chamelon3 #########################################
+  <group if="$(arg use_pointgrey)">
+    <include file="$(find jsk_mbzirc_task1_common)/launch/sensors/pointgrey_chameleon3.launch" >
+      <arg name="use_fisheye" value="$(arg use_fisheye)" />
+      <arg name="rect_type" value="$(arg rect_type)" />
+    </include>
+  </group>
+
+  ############## ZED #########################################
+  <!-- please use branch of tongtybj -->
+  <group if="$(arg use_zed)">
+    <include file="$(find zed_wrapper)/launch/zed.launch" />
+  </group>
+
+  ############## Guiadance #########################################
+  <group if="$(arg use_guidance)">
+    <node pkg="guidance" type="guidanceNode" name="guidance" output="screen" />
+  </group>
+
+</launch>

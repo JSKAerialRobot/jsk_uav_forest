@@ -25,3 +25,13 @@
     local-name: driver_comm
     uri: https://github.com/ros-drivers/driver_common.git
     version: indigo-devel
+
+# DJI related repo
+- git:
+    local-name: dji_sdk
+    uri: https://github.com/dji-sdk/Onboard-SDK-ROS.git
+    version: 3.2
+- git:
+    local-name: guidance
+    uri: https://github.com/dji-sdk/Guidance-SDK-ROS.git
+    version: master

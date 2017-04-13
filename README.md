@@ -18,7 +18,7 @@ rosdep install -y -r --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 catkin build
 ```
 
-## how to run program
+## how to run program in simulation
 
 - run in gazebo:
 ```
@@ -29,3 +29,21 @@ $ roslaunch jsk_uav_forest_simulation forest_simulation.launch
 ```
 $ roslaunch jsk_uav_forest_simulation forest_simulation.launch manual:=true
 ```
+## forest challenge (using DJI M100 + DJI Guidance + Pointgrey Chameleon3 + Hokuyo UST20LX)
+1. integrated launch file in UAV
+```
+$ roslaunch jsk_uav_forest_common challenge.launch
+```
+
+2. remote communication in UAV
+```
+$ roslaunch jsk_uav_forest_common communication2ground_station.launch UAV_IP:=10.42.0.1 GROUND_STATION_IP:=10.42.0.XXX
+```
+    10.42.0.XXX is the IP address of you rmeote PC. 
+
+3. remote communication in Remote PC
+```
+ roslaunch jsk_uav_forest_common ground_station.launch UAV_IP:=10.42.0.1 GROUND_STATION_IP:=10.42.0.XXX
+```
+    10.42.0.XXX is the IP address of you rmeote PC. 
+

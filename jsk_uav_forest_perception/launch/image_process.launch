@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="nodelet_name" default="camera_manager" />
+  <arg name="independent_nodelet" default="true" />
+  <arg name="headless" default="false" />
+  <arg name="image_name" default="/camera/image" />
+
+  <rosparam file="$(find jsk_uav_forest_perception)/param/ColorRegionDetection.yaml" command="load" />
+
+  <group ns="camera" >
+    <!-- nodelet manager -->
+    <node type="nodelet" pkg="nodelet" name="$(arg nodelet_name)" args="manager" output="screen" if="$(arg independent_nodelet)"/>
+
+    <!-- hsv filter -->
+<!--
+    <node pkg="nodelet" type="nodelet" name="hsv_filter"
+          args="load hsv_color_filter/hsv_color_filter $(arg nodelet_name)" output="screen">
+      <param name="use_camera_info" value="false" />
+      <param name="debug_view" value="flase" />
+      <param name="h_limit_max" value="300" />
+      <param name="h_limit_min" value="60" />
+      <param name="s_limit_max" value="255" />
+      <param name="s_limit_min" value="150" />
+      <param name="v_limit_max" value="255" />
+      <param name="v_limit_min" value="50" />
+    </node>
+-->
+
+    <!-- color region detector -->
+
+    <node pkg="nodelet" type="nodelet" name="color_region_detection"
+          args="load color_region_detection/ColorRegionDetector $(arg nodelet_name)" output="screen">
+      <param name="image_topic_name" value="$(arg image_name)"/>
+      </node>
+
+  </group>
+
+</launch>

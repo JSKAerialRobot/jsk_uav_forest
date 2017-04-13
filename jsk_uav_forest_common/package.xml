@@ -15,6 +15,7 @@
   <run_depend>dji_sdk</run_depend>
   <run_depend>guidance</run_depend>
   <run_depend>urg_node</run_depend>
+  <run_depend>jsk_tools</run_depend>
 
   <export>
   </export>

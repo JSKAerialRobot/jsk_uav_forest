@@ -21,21 +21,25 @@
 
   ############## Point Grey Chamelon3 #########################################
   <group if="$(arg use_pointgrey)">
-    <include file="$(find jsk_mbzirc_task1_common)/launch/sensors/pointgrey_chameleon3.launch" >
-      <arg name="use_fisheye" value="$(arg use_fisheye)" />
-      <arg name="rect_type" value="$(arg rect_type)" />
+    <include file="$(find jsk_uav_forest_common)/launch/sensor/pointgrey_chameleon3.launch" >
     </include>
   </group>
 
+  ############## Hokuyo #########################################
+  <group if="$(arg use_hokuyo)">
+    <include file="$(find jsk_uav_forest_common)/launch/sensor/urg_node.launch" >
+    </include>
+  </group>
+  
   ############## ZED #########################################
   <!-- please use branch of tongtybj -->
   <group if="$(arg use_zed)">
-    <include file="$(find zed_wrapper)/launch/zed.launch" />
+    <include file="$(find zed_wrapper)/launch/sensor/zed.launch" />
   </group>
 
   ############## Guiadance #########################################
   <group if="$(arg use_guidance)">
-    <node pkg="guidance" type="guidanceNode" name="guidance" output="screen" />
+    <node pkg="guidance" type="guidanceNode" name="guidance" output="screen" args="h" />
   </group>
 
 </launch>

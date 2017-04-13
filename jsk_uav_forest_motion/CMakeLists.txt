@@ -6,6 +6,12 @@ project(jsk_uav_forest_motion)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rospy
+  tf
+  geometry_msgs
+  std_msgs
+  sensor_msgs
+  nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions

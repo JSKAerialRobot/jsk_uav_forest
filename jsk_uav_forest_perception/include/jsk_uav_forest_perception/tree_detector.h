@@ -77,6 +77,7 @@ private:
   string sub_ctrl_srv_topic_name_;
   bool tree_cluster_pub_;
   double target_tree_drift_thre_;
+  double uav_tilt_thre_;
   bool verbose_;
 
   bool camera_info_update_;
@@ -90,7 +91,7 @@ private:
   int target_tree_index_;
   double target_theta_, target_dist_;
   tf::Vector3 uav_odom_;
-  float uav_theta_;
+  float uav_roll_, uav_pitch_, uav_yaw_;
   tf::Vector3 target_tree_global_location_;
 
   void subscribe();

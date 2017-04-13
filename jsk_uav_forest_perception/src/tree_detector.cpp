@@ -47,7 +47,7 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   target_dist_(0),
   uav_odom_(0,0,0),
   target_tree_global_location_(0,0,0),
-  uav_theta_(0)
+  uav_yaw_(0), uav_roll_(0), uav_pitch_(0)
 {
   /* ros param */
   nhp_.param("uav_odom_topic_name", uav_odom_topic_name_, string("uav_odom"));
@@ -62,13 +62,13 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("clurstering_min_points", clurstering_min_points_, 3);
   nhp_.param("tree_cluster_pub", tree_cluster_pub_, true);
   nhp_.param("target_tree_drift_thre", target_tree_drift_thre_, 0.5);
+  nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17);
   nhp_.param("verbose", verbose_, false);
 
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_cluster_ = nh_.advertise<sensor_msgs::LaserScan>(tree_cluster_topic_name_, 1);
   sub_ctrl_srv_ = nh_.advertiseService(sub_ctrl_srv_topic_name_, &TreeDetector::subControlCallback, this);
 }
-
 
 bool TreeDetector::subControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
@@ -139,7 +139,7 @@ void TreeDetector::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
   tf::Matrix3x3  uav_orientation_(uav_q);
   tfScalar r,p,y;
   uav_orientation_.getRPY(r, p, y);
-  uav_theta_ = y;
+  uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
 }
 
 void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_msg)
@@ -171,7 +171,7 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
       else
         {/* calculate the distance  */
           tf::Matrix3x3 rotation;
-          rotation.setRPY(0, 0, *it * laser_msg->angle_increment + laser_msg->angle_min + uav_theta_);
+          rotation.setRPY(0, 0, *it * laser_msg->angle_increment + laser_msg->angle_min + uav_yaw_);
           tree_global_location = uav_odom_ + rotation * tf::Vector3(laser_msg->ranges[*it], 0, 0);
           diff = (target_tree_global_location_ - tree_global_location).length();
         }
@@ -196,23 +196,31 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
     {
       detector_from_image_ = true;
       tf::Matrix3x3 rotation;
-      rotation.setRPY(0, 0, target_tree_index * laser_msg->angle_increment + laser_msg->angle_min + uav_theta_);
+      rotation.setRPY(0, 0, target_tree_index * laser_msg->angle_increment + laser_msg->angle_min + uav_yaw_);
       target_tree_global_location_ = uav_odom_ + rotation * tf::Vector3(laser_msg->ranges[target_tree_index], 0, 0);
     }
   else
     {
       /* outlier check method */
-      /* we only update the tree location, if the metric drift compared with previous location is within certain threshold, that is target_tree_drift_thre_. This can avoid, to some degree, the dramatic laser scan change due to the rapid attitude tilting of uav, especially the forward and backward movement by ptich tilting. We also believe that the laser scan can recover after being back to level, and the new target(tree) location has a small offset with the previous valid target location */
+      /* we only update the tree location, if the metric drift compared with previous location is within certain threshold, that is target_tree_drift_thre_ and uav_tilt_thre_. This can avoid, to some degree, the dramatic laser scan change due to the rapid attitude tilting of uav, especially the forward and backward movement by ptich tilting, along with the case that target tree hides behind other objects. We also believe that the laser scan can recover after being back to level, and the new target(tree) location has a small offset with the previous valid target location */
       /* TODO: we need a more robust outlier check method, i.e. the dynamic threshold based on the tilt angle and distance to the target */
-      float drift = (target_tree_global_location_ - target_tree_global_location).length();
-      if(verbose_) cout << "drift: " << drift << endl;
-      if(drift < target_tree_drift_thre_)
+
+      if(fabs(uav_pitch_) < uav_tilt_thre_)
         {
-          target_tree_global_location_ = target_tree_global_location;
+          float drift = (target_tree_global_location_ - target_tree_global_location).length();
+          if(verbose_) cout << "drift: " << drift << endl;
+          if(drift < target_tree_drift_thre_)
+            {
+              target_tree_global_location_ = target_tree_global_location;
+            }
+          else
+            {
+              ROS_WARN("lost the target tree, drift: %f, the nearest target location: [%f, %f], prev target location: [%f, %f]", drift, target_tree_global_location.x(), target_tree_global_location.y(), target_tree_global_location_.x(), target_tree_global_location_.y());
+            }
         }
       else
         {
-          ROS_WARN("lost the target tree, drift: %f, the nearest target location: [%f, %f], prev target location: [%f, %f]", drift, target_tree_global_location.x(), target_tree_global_location.y(), target_tree_global_location_.x(), target_tree_global_location_.y());
+          ROS_WARN("Too much tilt: %f", uav_pitch_);
         }
     }
 
@@ -223,7 +231,7 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
   geometry_msgs::PointStamped target_msg;
   target_msg.header = laser_msg->header;
   tf::Matrix3x3 rotation;
-  rotation.setRPY(0, 0, -uav_theta_);
+  rotation.setRPY(0, 0, -uav_yaw_);
   tf::Vector3 target_tree_local_location = rotation * (target_tree_global_location_ - uav_odom_);
   target_msg.point.x = target_tree_local_location.x();
   target_msg.point.y = target_tree_local_location.y();

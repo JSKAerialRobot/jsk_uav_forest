@@ -59,11 +59,15 @@ class CircleMotion:
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         
         self.odom_ = Odometry()
+        self.GLOBAL_FRAME_ = 0
+        self.LOCAL_FRAME_ = 1
         self.target_xy_pos_ = np.zeros(2)
         self.target_z_pos_ = 0.0
         self.target_yaw_ = 0.0
+        self.target_flame_ = self.GLOBAL_FRAME_
         self.initial_xy_pos_ = np.zeros(2)
         self.initial_z_pos_ = 0.0
+        self.initial_yaw_ = 0.0
 
         #state machine
         self.INITIAL_STATE_ = 0
@@ -85,12 +89,9 @@ class CircleMotion:
         self.uav_yaw_overflow_ = 0
         self.uav_accumulated_yaw_ = 0.0
         
-        self.GLOBAL_FRAME_ = 0
-        self.LOCAL_FRAME_ = 1
-        
         self.cycle_count_ = 0
         
-        self.tree_location_ = np.zeros(3)
+        self.tree_xy_pos_ = np.zeros(2)
 
     def odomCallback(self, msg):
         self.odom_ = msg
@@ -114,18 +115,17 @@ class CircleMotion:
         
 
     def treeLocationCallback(self, msg):
-        self.tree_location_ = np.array([msg.point.x, msg.point.y])
+        self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
 
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
             delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_]) 
-            delta_yaw = target_yaw - self.uav_yaw_
         elif frame == self.LOCAL_FRAME_:
             delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_]) 
-            delta_yaw = target_yaw
         else:
             return
 
+        delta_yaw = target_yaw - self.uav_yaw_
         current_vel = np.array([self.odom_.twist.twist.linear.x, self.odom_.twist.twist.linear.y, self.odom_.twist.twist.linear.z])
         if np.linalg.norm(delta_pos) < self.nav_pos_convergence_thresh_ and abs(delta_yaw) < self.nav_yaw_convergence_thresh_ and np.linalg.norm(current_vel) < self.nav_vel_convergence_thresh_:
             return True
@@ -143,21 +143,19 @@ class CircleMotion:
         return ret
 
 
-    #go pos function: only z is in always global frame
+    #go pos function: z and yaw are always in global frame
     def goPos(self, frame, target_xy, target_z, target_yaw):
         if frame == self.GLOBAL_FRAME_:
             rot_mat = np.array([[math.cos(self.uav_yaw_), math.sin(self.uav_yaw_)],[-math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
-            local_target_xy = np.dot(rot_mat, target_xy - self.uav_xy_pos_)
-            delta_xy = local_target_xy
-            delta_z = target_z - self.uav_z_pos_
-            delta_yaw = target_yaw - self.uav_yaw_
+            delta_xy = np.dot(rot_mat, target_xy - self.uav_xy_pos_)
         elif frame == self.LOCAL_FRAME_:
             delta_xy = target_xy
-            delta_z = target_z - self.uav_z_pos_
-            delta_yaw = target_yaw
         else:
             return
-
+        
+        delta_z = target_z - self.uav_z_pos_
+        delta_yaw = target_yaw - self.uav_yaw_
+       
         nav_xy_vel = delta_xy * self.nav_xy_pos_pgain_
         nav_z_vel = delta_z * self.nav_z_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
@@ -168,6 +166,11 @@ class CircleMotion:
         vel_msg.linear.y = nav_xy_vel[1]
         vel_msg.linear.z = nav_z_vel
         vel_msg.angular.z = nav_yaw_vel
+        #for debug
+        self.target_xy_pos_ = target_xy
+        self.target_z_pos_ = target_z
+        self.target_yaw_ = target_yaw
+        self.target_frame_ = frame
 
         return vel_msg
 
@@ -201,70 +204,76 @@ class CircleMotion:
     def controlCallback(self, event):
         if not self.odom_update_flag_:
             return
+        
+        #navigation
+        vel_msg = Twist()
+        if self.state_machine_ == self.INITIAL_STATE_:
+            vel_msg.linear.x = vel_msg.linear.y = vel_msg.linear.z = vel_msg.angular.z = 0.0
+        if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_) #hover
+        if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
+            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_, self.tree_xy_pos_[1]]), 
+                                                    self.takeoff_height_,
+                                                    self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
+        if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
+            vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_, self.circle_y_vel_, self.circle_radius_)
+        if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
+            #use global frame
+            #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.circle_initial_xy_, self.takeoff_height_, self.circle_initial_yaw_)
+            #use local frame
+            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_, self.tree_xy_pos_[1]]), 
+                                                    self.takeoff_height_,
+                                                    self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
+            
+        if self.state_machine_ == self.RETURN_HOME_STATE_:
+            #use global frame
+            #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_)
+            #use local frame
+            vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_pos_, self.takeoff_height_, self.initial_yaw_)
+        
+        self.vel_pub_.publish(vel_msg)
+        if self.use_dji_ == True:
+            self.drone_.velocity_control(0, vel_msg.linear.x, vel_msg.linear.y, vel_msg.linear.z, vel_msg.angular.z) #machine frame
+        #end navigation
 
         #state machine
         if self.state_machine_ == self.INITIAL_STATE_:
-            self.target_xy_pos_ = np.array(self.uav_xy_pos_)
-            self.initial_xy_pos_ = np.array(self.target_xy_pos_)
-            self.target_z_pos_ = self.takeoff_height_ #takeoff
-            self.target_yaw_ = self.uav_yaw_
+            self.initial_xy_pos_ = np.array(self.uav_xy_pos_)
+            self.initial_yaw_ = self.uav_yaw_
             if self.use_dji_ == True:
                 self.drone_.takeoff()
             self.state_machine_ = self.TAKEOFF_STATE_
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_) #hover
             rospy.loginfo("take off")
 
         elif self.state_machine_ == self.TAKEOFF_STATE_:
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_) #hover
-            if self.isConvergent(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+            if self.isConvergent(self.target_flame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                self.treeDetectionStart()
                self.state_machine_ = self.TREE_DETECTION_START_STATE_
 
         elif self.state_machine_ == self.TREE_DETECTION_START_STATE_:
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_) #hover
             self.tree_detection_wait_count_ += 1
             if self.tree_detection_wait_count_ > self.control_rate_ * self.tree_detection_wait_:
                 self.state_machine_ = self.APPROACHING_TO_TREE_STATE_
-                self.initial_target_tree_xy_pos_ = np.array(self.tree_location_)
+                self.initial_target_tree_xy_pos_ = np.array(self.tree_xy_pos_)
 
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
-            self.target_xy_pos_[0] = self.tree_location_[0] - self.circle_radius_
-            self.target_xy_pos_[1] = self.tree_location_[1]
-            
-            self.target_yaw_ = math.atan2(self.tree_location_[1], self.tree_location_[0])
-            vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_)
-            if self.isConvergent(self.LOCAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
-                rospy.loginfo("circle motion start")
+            if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
                 self.circle_initial_yaw_ = self.uav_accumulated_yaw_
                 self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
 
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
-            vel_msg = self.goCircle(self.tree_location_, self.target_z_pos_, self.circle_y_vel_, self.circle_radius_)
             if abs(self.circle_initial_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
-                rospy.loginfo("circle motion finish")
                 self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
                         
         elif self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
-            self.target_xy_pos_ = np.array(self.circle_initial_xy_)
-            self.target_yaw_ = self.circle_initial_yaw_
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_)
-            if self.isConvergent(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+            if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.state_machine_ = self.RETURN_HOME_STATE_
         
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
-            #use global pos
-            self.target_xy_pos_ = np.array(self.initial_xy_pos_)
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_)
-            #use local pos
-            #self.target_xy_pos_ = self.tree_location_ - self.initial_target_tree_xy_pos_            
-            #self.goPos(self.LOCAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_)
-
+            pass
+        
         self.state_machine_pub_.publish(self.state_name_[self.state_machine_])
-        self.vel_pub_.publish(vel_msg)
-        if self.use_dji_ == True:
-            self.drone_.velocity_control(0, vel_msg.linear.x, vel_msg.linear.y, vel_msg.linear.z, vel_msg.angular.z) #machine frame
-
 
 if __name__ == '__main__':
     try:

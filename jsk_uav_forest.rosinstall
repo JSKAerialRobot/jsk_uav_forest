@@ -26,6 +26,14 @@
     uri: https://github.com/ros-drivers/driver_common.git
     version: indigo-devel
 
+# Pointgrey camera
+# https://github.com/ros-drivers/pointgrey_camera_driver/pull/110
+- git:
+    local-name: pointgrey_camera_driver
+    uri: https://github.com/tongtybj/pointgrey_camera_driver.git
+    version: new_version
+
+
 # DJI related repo
 - git:
     local-name: dji_sdk

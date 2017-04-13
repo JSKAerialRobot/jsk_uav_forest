@@ -29,35 +29,6 @@ class CircleMotion:
             rospy.loginfo("Use DJI")
         else:
             rospy.init_node('circle_motion', anonymous=True)
-        
-        self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
-        self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
-        self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
-        self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
-        self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
-        self.tree_detection_start_service_name_ = rospy.get_param("~tree_detection_start_service_name", "sub_control")
-        self.control_rate_ = rospy.get_param("~control_rate", 20)
-        self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
-        self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
-        self.nav_z_pos_pgain_ = rospy.get_param("~nav_z_pos_pgain", 1.0)
-        self.nav_yaw_pgain_ = rospy.get_param("~nav_yaw_pgain", 1.0)
-        self.nav_xy_vel_thresh_ = rospy.get_param("~nav_xy_vel_thresh", 2.0)
-        self.nav_z_vel_thresh_ = rospy.get_param("~nav_z_vel_thresh", 2.0)
-        self.nav_yaw_vel_thresh_ = rospy.get_param("~nav_yaw_vel_thresh", 1.0)
-        self.nav_pos_convergence_thresh_ = rospy.get_param("~nav_pos_convergence_thresh", 0.1)
-        self.nav_yaw_convergence_thresh_ = rospy.get_param("~nav_yaw_convergence_thresh", 0.05)
-        self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
-        self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
-        self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
-        self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
-
-        self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
-
-        self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
-        self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
-        self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
-        self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
-        self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
 
         self.odom_ = Odometry()
         self.GLOBAL_FRAME_ = 0
@@ -91,8 +62,36 @@ class CircleMotion:
         self.uav_accumulated_yaw_ = 0.0
         
         self.cycle_count_ = 0
-        
         self.tree_xy_pos_ = np.zeros(2)
+            
+        self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
+        self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
+        self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
+        self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
+        self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
+        self.tree_detection_start_service_name_ = rospy.get_param("~tree_detection_start_service_name", "sub_control")
+        self.control_rate_ = rospy.get_param("~control_rate", 20)
+        self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
+        self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
+        self.nav_z_pos_pgain_ = rospy.get_param("~nav_z_pos_pgain", 1.0)
+        self.nav_yaw_pgain_ = rospy.get_param("~nav_yaw_pgain", 1.0)
+        self.nav_xy_vel_thresh_ = rospy.get_param("~nav_xy_vel_thresh", 2.0)
+        self.nav_z_vel_thresh_ = rospy.get_param("~nav_z_vel_thresh", 2.0)
+        self.nav_yaw_vel_thresh_ = rospy.get_param("~nav_yaw_vel_thresh", 1.0)
+        self.nav_pos_convergence_thresh_ = rospy.get_param("~nav_pos_convergence_thresh", 0.1)
+        self.nav_yaw_convergence_thresh_ = rospy.get_param("~nav_yaw_convergence_thresh", 0.05)
+        self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
+        self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
+        self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
+        self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
+
+        self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
+
+        self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
+        self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
+        self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
+        self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
+        self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
 
     def odomCallback(self, msg):
         self.odom_ = msg

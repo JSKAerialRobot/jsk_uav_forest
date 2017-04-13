@@ -5,10 +5,10 @@ import sys
 import rospy
 import math
 import tf
+import numpy as np
 from dji_sdk.dji_drone import DJIDrone
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Quaternion
-import numpy as np
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
@@ -46,9 +46,7 @@ class CircleMotion:
         self.nav_pos_convergence_thresh_ = rospy.get_param("~nav_pos_convergence_thresh", 0.1)
         self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
         self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
-        self.circle_x_gain_ = rospy.get_param("~circle_x_gain", 1.0) #not used
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
-        self.circle_yaw_pgain_ = rospy.get_param("~circle_yaw_pgain", 2.0) #not used
         
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -103,7 +101,13 @@ class CircleMotion:
         self.accumulated_yaw_ = self.uav_yaw_ + 2 * math.pi * self.uav_yaw_overflow_
         self.uav_yaw_old_ = self.uav_yaw_
         self.odom_update_flag_ = True
-    
+
+    def treeDetectionStart(self):
+        rospy.wait_for_service(self.tree_detection_start_service_name_)
+        tree_detection_start = rospy.ServiceProxy(self.tree_detection_start_service_name_, SetBool)
+        tree_detection_start(True)
+        
+
     def treeLocationCallback(self, msg):
         self.tree_location_ = np.array([msg.point.x, msg.point.y])
 
@@ -120,6 +124,17 @@ class CircleMotion:
             return True
         else:
             return False
+
+    def saturateVelocity(self, xy_vel, z_vel, yaw_vel):
+        ret = [xy_vel, z_vel, yaw_vel]
+        if np.linalg.norm(xy_vel) > self.nav_xy_vel_thresh_:
+            ret[0] = xy_vel * (self.nav_xy_vel_thresh_ / np.linalg.norm(xy_vel))
+        if abs(z_vel) > self.nav_z_vel_thresh_:
+            ret[1] = z_vel * self.nav_z_vel_thresh_ / abs(z_vel)
+        if abs(yaw_vel) > self.nav_yaw_vel_thresh_:
+            ret[2] = yaw_vel * self.nav_yaw_vel_thresh_ / abs(yaw_vel)
+        return ret
+
 
     def goPos(self, frame, target_xy, target_z, target_yaw):
         if frame == self.GLOBAL_FRAME_:
@@ -138,12 +153,24 @@ class CircleMotion:
         nav_xy_vel = delta_xy * self.nav_xy_pos_pgain_
         nav_z_vel = delta_z * self.nav_z_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
-        if np.linalg.norm(nav_xy_vel) > self.nav_xy_vel_thresh_:
-            nav_xy_vel *= (self.nav_xy_vel_thresh_ / np.linalg.norm(nav_xy_vel))
-        if abs(nav_z_vel) > self.nav_z_vel_thresh_:
-            nav_z_vel *= self.nav_z_vel_thresh_ / abs(nav_z_vel)
-        if abs(nav_yaw_vel) > self.nav_yaw_vel_thresh_:
-            nav_yaw_vel *= self.nav_yaw_vel_thresh_ / abs(nav_yaw_vel)
+      
+        nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
+        vel_msg = Twist() 
+        vel_msg.linear.x = nav_xy_vel[0]
+        vel_msg.linear.y = nav_xy_vel[1]
+        vel_msg.linear.z = nav_z_vel
+        vel_msg.angular.z = nav_yaw_vel
+        self.vel_pub_.publish(vel_msg)
+        if self.use_dji_ == True:
+            self.drone_.velocity_control(0, nav_xy_vel[0], nav_xy_vel[1], nav_z_vel, nav_yaw_vel) #machine frame
+
+    def goCircle(self, circle_center_xy, target_z, target_y_vel, radius):
+        nav_xy_vel = np.zeros(2)
+        nav_xy_vel[0] = -(radius - circle_center_xy[0]) * self.nav_xy_pos_pgain_
+        nav_xy_vel[1] = target_y_vel
+        nav_z_vel = target_z - self.uav_z_pos_
+        nav_yaw_vel = math.atan2(circle_center_xy[1], circle_center_xy[0]) * self.nav_yaw_pgain_ - target_y_vel / radius #feedback+feedforward
+        nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
         
         vel_msg = Twist() 
         vel_msg.linear.x = nav_xy_vel[0]
@@ -183,11 +210,9 @@ class CircleMotion:
         elif self.state_machine_ == self.TAKEOFF_STATE_:
             self.goPos(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_)
             if self.isConvergent(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_):
-                rospy.wait_for_service(self.tree_detection_start_service_name_)
-                tree_detection_start = rospy.ServiceProxy(self.tree_detection_start_service_name_, SetBool)
-                tree_detection_start(True)
-                self.state_machine_ = self.APPROACHING_TO_TREE_STATE_
-                self.waitCycle(0, True)
+               self.treeDetectionStart()
+               self.state_machine_ = self.APPROACHING_TO_TREE_STATE_
+               self.waitCycle(0, True)
 
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             if self.waitCycle(self.control_rate_ * 3, False) == False:
@@ -203,14 +228,7 @@ class CircleMotion:
                     self.circle_initial_yaw_ = self.accumulated_yaw_        
 
         elif self.state_machine_ == self.CIRCLE_MOTION_STATE_:
-            #local_x = math.cos(self.uav_yaw_) * -self.odom_.pose.pose.position.x + math.sin(self.uav_yaw_) * -self.odom_.pose.pose.position.y
-            #local_y = -math.sin(self.uav_yaw_) * -self.odom_.pose.pose.position.x + math.cos(self.uav_yaw_) * -self.odom_.pose.pose.position.y
-            #local_circle_center_pos = np.array([local_x, local_y, self.target_pos_[2]])
-            self.target_xy_pos_[0] = self.tree_location_[0] - self.circle_radius_
-            self.target_xy_pos_[1] = 0.2
-            self.target_yaw_ = math.atan2(self.tree_location_[1], self.tree_location_[0]) - math.atan2(self.target_xy_pos_[1], self.circle_radius_) #feedback+feedforward
-            self.goPos(self.LOCAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_)
-            
+            self.goCircle(self.tree_location_, self.target_z_pos_, self.circle_y_vel_, self.circle_radius_)
             if abs(self.circle_initial_yaw_ - self.accumulated_yaw_) > 2 * math.pi:
                 self.state_machine_ = self.RETURN_HOME_STATE_
 

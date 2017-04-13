@@ -22,7 +22,9 @@
     </node>
   </group>
 
-  <node pkg="topic_tools" type="throttle" name="scan_throttle" args="messages /scan 1.0" />
+  <node pkg="topic_tools" type="throttle" name="scan_throttle" args="messages /scan 1.0" >
+    <remap from="/scan_throttle" to="/scan/throttle" />
+  </node>
   
   <!-- UAV to Ground Station -->
   <node pkg="jsk_network_tools" type="silverhammer_highspeed_streamer.py"

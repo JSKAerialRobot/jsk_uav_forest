@@ -16,6 +16,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <run_depend>jsk_uav_forest_common</run_depend>
   <run_depend>jsk_uav_forest_perception</run_depend>
   <run_depend>jsk_uav_forest_motion</run_depend>
   <run_depend>jsk_uav_forest_simulation</run_depend>

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+  
+  <arg name="GROUND_STATION_IP" default="10.42.0.35" />
+  <arg name="UAV_IP" default="10.42.0.1" />
+  <arg name="PORT" default="16484" />
+
+  <!-- Ground Station (from UAV) -->
+  <node pkg="jsk_network_tools" type="silverhammer_highspeed_receiver.py"
+        output="screen"
+        name="receiver">
+    <param name="message" value="jsk_uav_forest_common/FC2OCSImage" />
+    <param name="receive_ip" value="$(arg GROUND_STATION_IP)" />
+    <param name="receive_port" value="$(arg PORT)" />
+    <param name="topic_prefix" value="" />
+  </node>
+
+</launch>

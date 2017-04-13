@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<launch>
+  
+  <arg name="GROUND_STATION_IP" default="localhost" />
+  <arg name="UAV_IP" default="localhost" />
+  <arg name="PORT" default="16484" />
+
+  <!-- Image Processing -->
+  <arg name="slow_rate" default="3" />
+  <!-- Throttle: 3Hz  -->
+  <group ns="camera">
+    <node pkg="nodelet" type="nodelet" name="image_throttle"
+          args="load jsk_uav_forest_common/image_throttle camera_nodelet_manager" output="screen">
+      <remap from="/camera/topic_in"  to="/target"/>
+      <remap from="/camera/topic_out" to="/target/throttle" />
+      <param name="update_rate" value="$(arg slow_rate)" />
+    </node>
+
+    <!-- compressed: jpeg -->
+    <param name="/remote/image/compressed/jpeg_quality" value="10" />
+    <node name="republish" type="republish" pkg="image_transport" output="screen" args="raw in:=/target/throttle compressed out:=/remote/image">
+    </node>
+  </group>
+
+  <node pkg="topic_tools" type="throttle" name="scan_throttle" args="messages /scan 1.0" />
+  
+  <!-- UAV to Ground Station -->
+  <node pkg="jsk_network_tools" type="silverhammer_highspeed_streamer.py"
+        name="highspeed_streamer">
+    <param name="message" value="jsk_uav_forest_common/FC2OCSImage" />
+    <param name="to_ip" value="$(arg GROUND_STATION_IP)" />
+    <param name="to_port" value="$(arg PORT)" />
+    <param name="send_rate" value="5" />
+    <param name="bandwidth" value="2000000" />
+    <param name="packet_size" value="1000" />
+  </node>
+
+</launch>

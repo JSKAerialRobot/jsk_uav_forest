@@ -43,6 +43,7 @@ include_directories(
 
 add_library(color_region_detection src/color_region_detector.cpp)
 target_link_libraries(color_region_detection ${catkin_LIBRARIES})
+add_dependencies(color_region_detection ${PROJECT_NAME}_gencfg)
 
 add_library(jsk_laser_scan_filters SHARED src/laser_scan_filters.cpp)
 target_link_libraries(jsk_laser_scan_filters ${catkin_LIBRARIES})

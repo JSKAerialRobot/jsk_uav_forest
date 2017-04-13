@@ -66,8 +66,9 @@ class CircleMotion:
         self.INITIAL_STATE_ = 0
         self.TAKEOFF_STATE_ = 1
         self.APPROACHING_TO_TREE_STATE_ = 2
-        self.CIRCLE_MOTION_STATE_ = 3
-        self.RETURN_HOME_STATE_ = 4
+        self.START_CIRCLE_MOTION_STATE_ = 3
+        self.FINISH_CIRCLE_MOTION_STATE_ = 4
+        self.RETURN_HOME_STATE_ = 5
         self.state_machine_ = self.INITIAL_STATE_
         self.state_name_ = ["initial", "takeoff", "approaching to tree", "circle motion", "return home"]
 
@@ -77,7 +78,7 @@ class CircleMotion:
         self.uav_yaw_ = 0.0
         self.uav_yaw_old_ = 0.0
         self.uav_yaw_overflow_ = 0
-        self.accumulated_yaw_ = 0.0
+        self.uav_accumulated_yaw_ = 0.0
         self.circle_initial_yaw_ = 0.0
         
         self.GLOBAL_FRAME_ = 0
@@ -98,7 +99,7 @@ class CircleMotion:
                 self.uav_yaw_overflow_ -= 1 
             elif self.uav_yaw_old_ - self.uav_yaw_old_ < -5.0:
                 self.uav_yaw_overflow_ += 1
-        self.accumulated_yaw_ = self.uav_yaw_ + 2 * math.pi * self.uav_yaw_overflow_
+        self.uav_accumulated_yaw_ = self.uav_yaw_ + 2 * math.pi * self.uav_yaw_overflow_
         self.uav_yaw_old_ = self.uav_yaw_
         self.odom_update_flag_ = True
 
@@ -225,11 +226,11 @@ class CircleMotion:
                 self.goPos(self.LOCAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_)
                 if self.isConvergent(self.LOCAL_FRAME_, self.target_xy_pos_, self.target_z_pos_):
                     self.state_machine_ = self.CIRCLE_MOTION_STATE_
-                    self.circle_initial_yaw_ = self.accumulated_yaw_        
+                    self.circle_initial_yaw_ = self.uav_accumulated_yaw_        
 
         elif self.state_machine_ == self.CIRCLE_MOTION_STATE_:
             self.goCircle(self.tree_location_, self.target_z_pos_, self.circle_y_vel_, self.circle_radius_)
-            if abs(self.circle_initial_yaw_ - self.accumulated_yaw_) > 2 * math.pi:
+            if abs(self.circle_initial_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
                 self.state_machine_ = self.RETURN_HOME_STATE_
 
         elif self.state_machine_ == self.RETURN_HOME_STATE_:

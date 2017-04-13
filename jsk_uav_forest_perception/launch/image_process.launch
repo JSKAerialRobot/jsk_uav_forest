@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="nodelet_name" default="camera_manager" />
+  <arg name="nodelet_name" default="camera_nodelet_manager" />
   <arg name="independent_nodelet" default="true" />
   <arg name="headless" default="false" />
   <arg name="image_name" default="/camera/image" />

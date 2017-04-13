@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="camera_serial" default="0" />
+  <arg name="camera_type" value="cm3_u3_13y3c_m38b_1000" />
+
+  <group ns="camera">
+    <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" output="screen"/>
+    <node pkg="nodelet" type="nodelet" name="camera_nodelet"
+          args="load pointgrey_camera_driver/PointGreyCameraNodelet camera_nodelet_manager" output="screen" >
+      <param name="frame_id" value="camera" />
+      <param name="serial" value="$(arg camera_serial)" />
+
+      <param name="frame_rate" value="30" />
+      <param name="auto_exposure" value="true" />
+      <param name="auto_gain" value="true" />
+      <param name="auto_shutter" value="true" />
+
+      <param name="camera_info_url" value="file://$(find jsk_uav_forest_common)/camera_info/$(arg camera_type).yaml" />
+    </node>
+
+    <node pkg="nodelet" type="nodelet" name="image_proc_debayer" args="load image_proc/debayer camera_nodelet_manager" output="screen" >
+    </node>
+
+    <node pkg="nodelet" type="nodelet" name="image_proc_rectify" args="load image_proc/rectify camera_nodelet_manager" output="screen" >
+      <remap from="/camera/image_mono" to="/camera/image_color"/>
+      <!--<remap from="/camera/camera_info" to="/camera/image_color"/>-->
+    </node>
+
+  </group>
+
+
+</launch>

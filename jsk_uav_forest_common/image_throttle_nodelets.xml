@@ -1,0 +1,7 @@
+<library path="lib/libimage_throttle">
+  <class name="jsk_uav_forest_common/image_throttle" type="NodeletThrottleImage" base_class_type="nodelet::Nodelet">
+    <description>
+      Nodelet to image throttle.
+    </description>
+  </class>
+</library>

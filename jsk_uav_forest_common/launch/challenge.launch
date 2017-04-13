@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- bringup -->
+  <include file="$(find jsk_uav_forest_common)/launch/m100_bringup.launch" >
+  </include>
+  <!-- perception + motion -->
+  <include file="$(find jsk_uav_forest_motion)/launch/motion.launch">
+    <arg name="use_dji" value="True" />
+    <arg name="uav_odom_topic_name" value="/dji_sdk/odometry" />
+  </include>
+</launch>

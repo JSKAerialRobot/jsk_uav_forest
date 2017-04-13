@@ -2,7 +2,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2016, JSK Lab
+ *  Copyright (c) 2017, JSK Lab
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -106,12 +106,19 @@ namespace color_region_detection
 
   void ColorRegionDetector::cameraDataCallback(const sensor_msgs::ImageConstPtr& image_msg)
   {
-
     cv::Mat src_image = cv_bridge::toCvCopy(image_msg, image_msg->encoding)->image;
 
     /* hsv filter */
     cv::Mat hsv_image, hsv_image_mask;
-    cv::cvtColor(src_image, hsv_image, CV_RGB2HSV);
+    if(image_msg->encoding == sensor_msgs::image_encodings::RGB8)
+      {
+	cv::cvtColor(src_image, hsv_image, CV_RGB2HSV);
+      }
+    else if(image_msg->encoding == sensor_msgs::image_encodings::BGR8)
+      {
+	cv::cvtColor(src_image, hsv_image, CV_BGR2HSV);
+      }
+
     if(hsv_lower_bound_[0] < hsv_upper_bound_[0])
       {
         cv::inRange(hsv_image,

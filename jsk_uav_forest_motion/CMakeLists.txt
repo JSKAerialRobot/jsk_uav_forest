@@ -7,7 +7,6 @@ project(jsk_uav_forest_motion)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  dji_sdk
   tf
   geometry_msgs
   std_msgs

@@ -31,10 +31,11 @@ class CircleMotion:
             rospy.init_node('circle_motion', anonymous=True)
         
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
-        self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
-        self.tree_detection_start_service_name_ = rospy.get_param("~tree_detection_start_service_name", "sub_control")
+        self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
+        self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
+        self.tree_detection_start_service_name_ = rospy.get_param("~tree_detection_start_service_name", "sub_control")
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
@@ -48,23 +49,23 @@ class CircleMotion:
         self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
         self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
-        self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait_", 1.0)
-        
+        self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
 
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
         self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
+        self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
-        
+
         self.odom_ = Odometry()
         self.GLOBAL_FRAME_ = 0
         self.LOCAL_FRAME_ = 1
         self.target_xy_pos_ = np.zeros(2)
         self.target_z_pos_ = 0.0
         self.target_yaw_ = 0.0
-        self.target_flame_ = self.GLOBAL_FRAME_
+        self.target_frame_ = self.GLOBAL_FRAME_
         self.initial_xy_pos_ = np.zeros(2)
         self.initial_z_pos_ = 0.0
         self.initial_yaw_ = 0.0
@@ -230,10 +231,6 @@ class CircleMotion:
             #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_)
             #use local frame
             vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_pos_, self.takeoff_height_, self.initial_yaw_)
-        
-        self.vel_pub_.publish(vel_msg)
-        if self.use_dji_ == True:
-            self.drone_.velocity_control(0, vel_msg.linear.x, vel_msg.linear.y, vel_msg.linear.z, vel_msg.angular.z) #machine frame
         #end navigation
 
         #state machine
@@ -246,7 +243,7 @@ class CircleMotion:
             rospy.loginfo("take off")
 
         elif self.state_machine_ == self.TAKEOFF_STATE_:
-            if self.isConvergent(self.target_flame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+            if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                self.treeDetectionStart()
                self.state_machine_ = self.TREE_DETECTION_START_STATE_
 
@@ -273,7 +270,24 @@ class CircleMotion:
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
             pass
         
+        #publication
         self.state_machine_pub_.publish(self.state_name_[self.state_machine_])
+            
+        target_pos_msg = Odometry()
+        target_pos_msg.header = self.odom_.header
+        if self.target_frame_ == self.GLOBAL_FRAME_:
+            target_pos_msg.child_frame_id = "global"
+        elif self.target_frame_ == self.LOCAL_FRAME_:
+            target_pos_msg.child_frame_id = "local"
+        target_pos_msg.pose.pose.position.x = self.target_xy_pos_[0]
+        target_pos_msg.pose.pose.position.y = self.target_xy_pos_[1]
+        target_pos_msg.pose.pose.position.z = self.target_z_pos_
+        target_pos_msg.pose.pose.orientation.w = self.target_yaw_
+        self.target_pos_pub_.publish(target_pos_msg)
+
+        self.vel_pub_.publish(vel_msg)
+        if self.use_dji_ == True:
+            self.drone_.velocity_control(0, vel_msg.linear.x, vel_msg.linear.y, vel_msg.linear.z, vel_msg.angular.z) #machine frame
 
 if __name__ == '__main__':
     try:

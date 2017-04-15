@@ -2,15 +2,20 @@
 <launch>
   <arg name="use_dji" default="False" />
   <arg name="uav_odom_topic_name" default="uav/odom" />
+
+  ############## Odometry ###############
+  <node pkg="jsk_uav_forest_common" type="integration_odom.py" name="integration_odom" output="screen" />
+
   ######### Perception Node #########
   <include file="$(find jsk_uav_forest_perception)/launch/tree_detector.launch">
     <arg name="simulation" value="True" unless="$(arg use_dji)" />
     <arg name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" />
+    <arg name="use_dji" default="$(arg use_dji)" />
   </include>
 
   ######### Motion Node #########
   <node pkg="jsk_uav_forest_motion" type="circle_motion.py" name="circle_motion" output="screen" args="$(arg use_dji)">
     <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)" if="$(arg use_dji)"/>
     <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
-  </node>
+    </node>
 </launch>

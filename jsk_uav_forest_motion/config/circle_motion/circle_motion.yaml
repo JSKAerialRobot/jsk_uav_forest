@@ -3,15 +3,15 @@
 control_rate : 20
 
 takeoff_height : 1.5
-nav_xy_pos_pgain : 1.0
+nav_xy_pos_pgain : 0.7
 nav_z_pos_pgain : 1.0
-nav_yaw_pgain : 2.0
+nav_yaw_pgain : 1.5
 nav_xy_vel_thresh : 1.0
 nav_z_vel_thresh : 1.5
 nav_yaw_vel_thresh : 2.0
-nav_pos_convergence_thresh : 0.05
-nav_yaw_convergence_thresh : 0.01
-nav_vel_convergence_thresh : 0.05
-circle_radius : 1.0
-circle_y_vel : 0.3
+nav_pos_convergence_thresh : 0.1
+nav_yaw_convergence_thresh : 0.1
+nav_vel_convergence_thresh : 0.5
+circle_radius : 3.0
+circle_y_vel : 0.2
 tree_detection_wait : 1.0

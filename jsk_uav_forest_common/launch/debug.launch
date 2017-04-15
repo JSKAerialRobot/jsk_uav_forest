@@ -1,14 +1,13 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="simulation" default="false" />
-  <arg name="use_dji" default="false" />
-  <arg name="uav_odom_topic_name" default="uav_odom" />
-  <arg name="image_name" default="/camera/image_rect" />
-  
-  <!-- vision base -->
+  ############## Odometry ###############
+  <node pkg="jsk_uav_forest_common" type="integration_odom.py" name="integration_odom" output="screen" />
+
+  ######### Perception Node #########
+    <!-- vision base -->
   <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
-    <arg name="independent_nodelet" value="$(arg simulation)" />
-    <arg name="image_name" value="$(arg image_name)" unless="$(arg simulation)"/>
+    <arg name="independent_nodelet" value="true" />
+    <arg name="image_name" value="/camera/image_rect"/>
   </include>
 
   <!-- 2D laser base -->
@@ -21,10 +20,9 @@
     <param name="camera_info_topic_name" value="/camera/camera_info" />
     <param name="laser_scan_topic_name" value="/shadow_filtered" />
     <param name="clurstering_max_radius" value="0.4" />
-    <param name="uav_odom_topic_name" value="/ground_truth/state" if="$(arg simulation)"/>
-    <param name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" unless="$(arg simulation)"/>
-    <param name="verbose" value="false" />
-    <param name="left_hand_frame" value="$(arg use_dji)" />
-  </node>
+    <param name="uav_odom_topic_name" value="/integrated_odom"/>
 
+    <param name="verbose" value="false" />
+    <param name="left_hand_frame" value="true" />
+  </node>
 </launch>

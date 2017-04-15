@@ -96,9 +96,16 @@ class CircleMotion:
     def odomCallback(self, msg):
         self.odom_ = msg
         self.uav_xy_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
+    	if self.use_dji_ == True:
+		    self.uav_xy_pos_[1] *= -1    
+	
         self.uav_z_pos_ = msg.pose.pose.position.z
         quaternion = np.array([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])
+        
         self.uav_yaw_ = tf.transformations.euler_from_quaternion(quaternion)[2]
+        if self.use_dji_ == True:
+			self.uav_yaw_ *= -1
+
         if self.odom_update_flag_ == True:
             if self.uav_yaw_ - self.uav_yaw_old_ > 5.0:
                 self.uav_yaw_overflow_ -= 1 
@@ -112,7 +119,6 @@ class CircleMotion:
         rospy.wait_for_service(self.tree_detection_start_service_name_)
         tree_detection_start = rospy.ServiceProxy(self.tree_detection_start_service_name_, SetBool)
         tree_detection_start(True)
-        
 
     def treeLocationCallback(self, msg):
         self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
@@ -141,7 +147,6 @@ class CircleMotion:
         if abs(yaw_vel) > self.nav_yaw_vel_thresh_:
             ret[2] = yaw_vel * self.nav_yaw_vel_thresh_ / abs(yaw_vel)
         return ret
-
 
     #go pos function: z and yaw are always in global frame
     def goPos(self, frame, target_xy, target_z, target_yaw):
@@ -286,7 +291,7 @@ class CircleMotion:
 
         self.vel_pub_.publish(vel_msg)
         if self.use_dji_ == True:
-            self.drone_.velocity_control(0, vel_msg.linear.x, vel_msg.linear.y, vel_msg.linear.z, vel_msg.angular.z) #machine frame
+            self.drone_.velocity_control(0, vel_msg.linear.x, -vel_msg.linear.y, vel_msg.linear.z, vel_msg.angular.z) #machine frame
 
 if __name__ == '__main__':
     try:

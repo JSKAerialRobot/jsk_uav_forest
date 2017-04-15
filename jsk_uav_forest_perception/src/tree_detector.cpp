@@ -61,10 +61,13 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("clurstering_max_radius", clurstering_max_radius_, 0.1);
   nhp_.param("clurstering_min_points", clurstering_min_points_, 3);
   nhp_.param("tree_cluster_pub", tree_cluster_pub_, true);
+  nhp_.param("color_region_tree_clustering_angle_diff_thre", color_region_tree_clustering_angle_diff_thre_, 0.10);
   nhp_.param("target_tree_drift_thre", target_tree_drift_thre_, 0.5);
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17);
   nhp_.param("verbose", verbose_, false);
-
+  nhp_.param("left_hand_frame", left_hand_frame_, false);
+  if(left_hand_frame_) ROS_WARN("Use left hand frame for odometry, i.e. DJI");
+  
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_cluster_ = nh_.advertise<sensor_msgs::LaserScan>(tree_cluster_topic_name_, 1);
   sub_ctrl_srv_ = nh_.advertiseService(sub_ctrl_srv_topic_name_, &TreeDetector::subControlCallback, this);
@@ -130,8 +133,6 @@ void TreeDetector::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cam
 
 void TreeDetector::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
 {
-  uav_odom_.setX(uav_msg->pose.pose.position.x);
-  uav_odom_.setY(uav_msg->pose.pose.position.y);
   tf::Quaternion uav_q(uav_msg->pose.pose.orientation.x,
                        uav_msg->pose.pose.orientation.y,
                        uav_msg->pose.pose.orientation.z,
@@ -139,7 +140,21 @@ void TreeDetector::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
   tf::Matrix3x3  uav_orientation_(uav_q);
   tfScalar r,p,y;
   uav_orientation_.getRPY(r, p, y);
-  uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
+  if(left_hand_frame_)
+    {
+      uav_odom_.setX(uav_msg->pose.pose.position.x);
+      uav_odom_.setY(-uav_msg->pose.pose.position.y);
+      uav_odom_.setZ(uav_msg->pose.pose.position.z);
+      uav_roll_ = r; uav_pitch_ = -p; uav_yaw_ = -y;
+    }
+  else
+    {
+      uav_odom_.setX(uav_msg->pose.pose.position.x);
+      uav_odom_.setY(uav_msg->pose.pose.position.y);
+      uav_odom_.setZ(uav_msg->pose.pose.position.z);
+      uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
+    }
+
 }
 
 void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_msg)
@@ -154,6 +169,10 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
 
   if(!color_region_update_) return;
 
+  if(verbose_)
+    ROS_INFO("receive new laser scan");
+  
+  
   /* find the tree most close to the color region */
   float min_diff = 1e6;
   int target_tree_index = target_tree_index_;
@@ -194,10 +213,18 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
   /* update */
   if(!detector_from_image_)
     {
-      detector_from_image_ = true;
-      tf::Matrix3x3 rotation;
-      rotation.setRPY(0, 0, target_tree_index * laser_msg->angle_increment + laser_msg->angle_min + uav_yaw_);
-      target_tree_global_location_ = uav_odom_ + rotation * tf::Vector3(laser_msg->ranges[target_tree_index], 0, 0);
+      if(min_diff < color_region_tree_clustering_angle_diff_thre_)
+	{
+	  ROS_WARN("tree detector: find the target tree, angle_diff: %f", min_diff);
+	  detector_from_image_ = true;
+	  tf::Matrix3x3 rotation;
+	  rotation.setRPY(0, 0, target_tree_index * laser_msg->angle_increment + laser_msg->angle_min + uav_yaw_);
+	  target_tree_global_location_ = uav_odom_ + rotation * tf::Vector3(laser_msg->ranges[target_tree_index], 0, 0);
+	}
+      else
+	{
+	  ROS_INFO_THROTTLE(1,"can not find the target tree, diff: %f", min_diff);
+	}
     }
   else
     {

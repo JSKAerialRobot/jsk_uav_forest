@@ -3,9 +3,6 @@
   <arg name="use_dji" default="False" />
   <arg name="uav_odom_topic_name" default="uav/odom" />
 
-  ############## Odometry ###############
-  <node pkg="jsk_uav_forest_common" type="integration_odom.py" name="integration_odom" output="screen" />
-
   ######### Perception Node #########
   <include file="$(find jsk_uav_forest_perception)/launch/tree_detector.launch">
     <arg name="simulation" value="True" unless="$(arg use_dji)" />

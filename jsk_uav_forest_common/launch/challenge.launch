@@ -3,10 +3,13 @@
   <!-- bringup -->
   <include file="$(find jsk_uav_forest_common)/launch/m100_bringup.launch" >
   </include>
+
+  <!-- Odometry -->
+  <node pkg="jsk_uav_forest_common" type="integration_odom.py" name="integration_odom" output="screen" />
+
   <!-- perception + motion -->
   <include file="$(find jsk_uav_forest_motion)/launch/motion.launch">
     <arg name="use_dji" value="True" />
-
-    <arg name="uav_odom_topic_name" value="/integrated_odom" /> 
+    <arg name="uav_odom_topic_name" value="/modified_odom" /> 
   </include>
 </launch>

@@ -5,7 +5,7 @@
   </include>
 
   <!-- Odometry -->
-  <node pkg="jsk_uav_forest_common" type="integration_odom.py" name="integration_odom" output="screen" />
+  <node pkg="jsk_uav_forest_common" type="odom_generator.py" name="odom_gen" output="screen" />
 
   <!-- perception + motion -->
   <include file="$(find jsk_uav_forest_motion)/launch/motion.launch">

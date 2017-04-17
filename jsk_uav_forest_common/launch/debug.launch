@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   ############## Odometry ###############
-  <node pkg="jsk_uav_forest_common" type="odom_gen.py" name="odom_gen" output="screen" />
+  <node pkg="jsk_uav_forest_common" type="odom_generator.py" name="odom_gen" output="screen" />
 
   ######### Perception Node #########
     <!-- vision base -->

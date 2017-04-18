@@ -67,7 +67,7 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("verbose", verbose_, false);
   nhp_.param("left_hand_frame", left_hand_frame_, false);
   if(left_hand_frame_) ROS_WARN("Use left hand frame for odometry, i.e. DJI");
-  
+
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_cluster_ = nh_.advertise<sensor_msgs::LaserScan>(tree_cluster_topic_name_, 1);
   sub_ctrl_srv_ = nh_.advertiseService(sub_ctrl_srv_topic_name_, &TreeDetector::subControlCallback, this);
@@ -183,8 +183,16 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
       tf::Vector3 tree_global_location;
 
       if(!detector_from_image_)
-        {/* we only use the result of color_region_direction at begin */
-          diff = fabs(*it * laser_msg->angle_increment + laser_msg->angle_min - color_region_direction_);
+        {/* we only use the result of color_region_direction at begin, and focus within the fov of the camera image */
+          float laser_direction = *it * laser_msg->angle_increment + laser_msg->angle_min;
+          float fov = atan2(camera_cx_, camera_fx_); //proximate the width of image with camera_cx_
+          if(fabs(laser_direction) > fov)
+            {
+              if(verbose_) cout << "eliminate: laser_direction:" << laser_direction << "; " << "fov: " << fov << endl;
+              continue;
+            }
+
+          diff = fabs(laser_direction - color_region_direction_);
         }
       else
         {/* calculate the distance  */

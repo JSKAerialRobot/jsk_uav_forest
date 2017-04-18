@@ -67,7 +67,7 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("verbose", verbose_, false);
   nhp_.param("left_hand_frame", left_hand_frame_, false);
   if(left_hand_frame_) ROS_WARN("Use left hand frame for odometry, i.e. DJI");
-  
+
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_cluster_ = nh_.advertise<sensor_msgs::LaserScan>(tree_cluster_topic_name_, 1);
   sub_ctrl_srv_ = nh_.advertiseService(sub_ctrl_srv_topic_name_, &TreeDetector::subControlCallback, this);
@@ -171,8 +171,7 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
 
   if(verbose_)
     ROS_INFO("receive new laser scan");
-  
-  
+
   /* find the tree most close to the color region */
   float min_diff = 1e6;
   int target_tree_index = target_tree_index_;
@@ -184,8 +183,16 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
       tf::Vector3 tree_global_location;
 
       if(!detector_from_image_)
-        {/* we only use the result of color_region_direction at begin */
-          diff = fabs(*it * laser_msg->angle_increment + laser_msg->angle_min - color_region_direction_);
+        {/* we only use the result of color_region_direction at begin, and focus within the fov of the camera image */
+          float laser_direction = *it * laser_msg->angle_increment + laser_msg->angle_min;
+          float fov = atan2(camera_cx_, camera_fx_); //proximate the width of image with camera_cx_
+          if(fabs(laser_direction) > fov)
+            {
+              if(verbose_) cout << "eliminate: laser_direction:" << laser_direction << "; " << "fov: " << fov << endl;
+              continue;
+            }
+
+          diff = fabs(laser_direction - color_region_direction_);
         }
       else
         {/* calculate the distance  */
@@ -214,17 +221,17 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
   if(!detector_from_image_)
     {
       if(min_diff < color_region_tree_clustering_angle_diff_thre_)
-	{
-	  ROS_WARN("tree detector: find the target tree, angle_diff: %f", min_diff);
-	  detector_from_image_ = true;
-	  tf::Matrix3x3 rotation;
-	  rotation.setRPY(0, 0, target_tree_index * laser_msg->angle_increment + laser_msg->angle_min + uav_yaw_);
-	  target_tree_global_location_ = uav_odom_ + rotation * tf::Vector3(laser_msg->ranges[target_tree_index], 0, 0);
-	}
+        {
+          ROS_WARN("tree detector: find the target tree, angle_diff: %f", min_diff);
+          detector_from_image_ = true;
+          tf::Matrix3x3 rotation;
+          rotation.setRPY(0, 0, target_tree_index * laser_msg->angle_increment + laser_msg->angle_min + uav_yaw_);
+          target_tree_global_location_ = uav_odom_ + rotation * tf::Vector3(laser_msg->ranges[target_tree_index], 0, 0);
+        }
       else
-	{
-	  ROS_INFO_THROTTLE(1,"can not find the target tree, diff: %f", min_diff);
-	}
+        {
+          ROS_INFO_THROTTLE(1,"can not find the target tree, diff: %f", min_diff);
+        }
     }
   else
     {
@@ -297,6 +304,7 @@ void TreeDetector::treeClustering(const sensor_msgs::LaserScan& scan_in, vector<
   /* for each blob calculate center and radius */
   for (unsigned int i = 0; i < range_blobs.size(); i++) {
     int size = range_blobs[i].size();
+#if 0 // previous radisu calculation, has some problem
     /* check center of blob */
     double center_x = 0, center_y = 0;
     for (unsigned int j = 0; j < size; j++) {
@@ -316,6 +324,24 @@ void TreeDetector::treeClustering(const sensor_msgs::LaserScan& scan_in, vector<
       if ( radius < fabs(center_x - x) ) radius = fabs(center_x - x) ;
       if ( radius < fabs(center_y - y) ) radius = fabs(center_y - y) ;
     }
+#else // very rough proximation
+    float angle = (size - 1) * scan_in.angle_increment;
+    float length = 0;
+    float radius = 0;
+    for (unsigned int j = 0; j < size - 1; j++) {
+      float x_curr = scan_in.ranges[range_blobs[i][j]];
+      float x_next = scan_in.ranges[range_blobs[i][j + 1]]; // cos(scan_in.angle_increment) = 1
+      float y_next = scan_in.ranges[range_blobs[i][j + 1]] * scan_in.angle_increment; // sin(scan_in.angle_increment) = scan_in.angle_increment
+      length += sqrt((x_curr - x_next) * (x_curr - x_next) + y_next * y_next);
+    }
+    radius = length / (M_PI - angle);
+    if(verbose_)
+      {
+        cout << i << ": direction: " << (range_blobs[i][0] + size/2) * scan_in.angle_increment + scan_in.angle_min
+             << "[rad]; size: " << size << "; radius: "
+             << radius << "[m]; length: " << length << "[m]; angle: " << angle << "[rad]" << endl;
+      }
+#endif
 
     if ( radius < clurstering_max_radius_ ) {
       indices_to_publish.insert(range_blobs[i][0] + size/2);

@@ -29,6 +29,16 @@ $ roslaunch jsk_uav_forest_simulation forest_simulation.launch
 ```
 $ roslaunch jsk_uav_forest_simulation forest_simulation.launch manual:=true
 ```
+
+- run in gazebo by autonomous perception and motion
+```
+$ roslaunch jsk_uav_forest_simulation forest_simulation.launch
+```
+  start by calling a rosservice
+```
+$ rosservice call /task_start true
+```
+
 ## forest challenge (using DJI M100 + DJI Guidance + Pointgrey Chameleon3 + Hokuyo UST20LX)
 1. integrated launch file in UAV
 ```

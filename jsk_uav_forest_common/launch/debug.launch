@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   ############## Odometry ###############
-  <node pkg="jsk_uav_forest_common" type="integration_odom.py" name="integration_odom" output="screen" />
+  <node pkg="jsk_uav_forest_common" type="odom_generator.py" name="odom_gen" output="screen" />
 
   ######### Perception Node #########
     <!-- vision base -->
@@ -20,7 +20,7 @@
     <param name="camera_info_topic_name" value="/camera/camera_info" />
     <param name="laser_scan_topic_name" value="/shadow_filtered" />
     <param name="clurstering_max_radius" value="0.4" />
-    <param name="uav_odom_topic_name" value="/integrated_odom"/>
+    <param name="uav_odom_topic_name" value="/modified_odom"/>
 
     <param name="verbose" value="false" />
     <param name="left_hand_frame" value="true" />

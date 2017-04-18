@@ -16,27 +16,27 @@ class OdomGenerator:
         self.uav_odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.uavOdomCallback)
         self.uav_odom_pub_ = rospy.Publisher(self.uav_odom_pub_topic_name_, Odometry, queue_size = 10)
         self.modified_odom_ = Odometry()
-        self.modified_odom_.pose.pose.position.x = 0.0		
-        self.modified_odom_.pose.pose.position.y = 0.0		
-        self.modified_odom_.pose.pose.position.z = 0.0		
-        self.modified_odom_old_stamp_ = rospy.get_rostime() 
+        self.modified_odom_.pose.pose.position.x = 0.0
+        self.modified_odom_.pose.pose.position.y = 0.0
+        self.modified_odom_.pose.pose.position.z = 0.0
+        self.modified_odom_old_stamp_ = rospy.get_rostime()
         self.first_call_flag_ = True
 
     def uavOdomCallback(self, msg):
         if self.first_call_flag_ == True:
             self.first_call_flag_ = False
-            self.modified_old_stamp_ = msg.header.stamp
+            self.modified_odom_old_stamp_ = msg.header.stamp
             return
-            
+
         time = (msg.header.stamp - self.modified_odom_old_stamp_).to_sec()
         self.modified_odom_.header = msg.header
         self.modified_odom_.pose.pose.orientation = msg.pose.pose.orientation
-        self.modified_odom_.pose.pose.position.z = msg.pose.pose.position.z		
+        self.modified_odom_.pose.pose.position.z = msg.pose.pose.position.z
         self.modified_odom_.pose.pose.position.x += (msg.twist.twist.linear.x * time)
         self.modified_odom_.pose.pose.position.y += (msg.twist.twist.linear.y * time)
-        
+
         self.uav_odom_pub_.publish(self.modified_odom_)
-        self.old_stamp_ = msg.header.stamp		
+        self.modified_odom_old_stamp_ = msg.header.stamp
 
 if __name__ == '__main__':
     try:
@@ -45,4 +45,4 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
-        
+

@@ -1,6 +1,6 @@
 camera:
         color_region_detection:
-                h_min: 250
+                h_min: 150
                 s_min: 80
                 v_min: 100
                 h_max: 16

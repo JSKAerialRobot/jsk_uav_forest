@@ -3,6 +3,7 @@
   <arg name="dji_key" default="ed59ebb66de2a99221de11485dbc4a06095b70a82db07a313115e2273ae7b6c7"/>
   <arg name="use_guidance" default="True" />
   <arg name="use_pointgrey" default="True" />
+  <arg name="use_usb_cam" default="False" />
   <arg name="use_hokuyo" default="True" />
   <arg name="use_zed" default="False" />
 
@@ -25,6 +26,13 @@
     </include>
   </group>
 
+  ############## USB Cam #########################################
+  <group if="$(arg use_usb_cam)">
+    <include file="$(find jsk_uav_forest_common)/launch/sensor/usb_cam.launch" >
+    </include>
+  </group>
+
+  
   ############## Hokuyo #########################################
   <group if="$(arg use_hokuyo)">
     <include file="$(find jsk_uav_forest_common)/launch/sensor/urg_node.launch" >

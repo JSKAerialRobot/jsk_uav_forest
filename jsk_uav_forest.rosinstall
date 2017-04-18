@@ -44,3 +44,10 @@
     local-name: guidance
     uri: https://github.com/tongtybj/Guidance-SDK-ROS.git
     version: dependency
+
+#usb cam
+- git:
+    local-name: usb_cam
+    uri: https://github.com/bosch-ros-pkg/usb_cam.git
+    version: master
+

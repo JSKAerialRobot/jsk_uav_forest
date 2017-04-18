@@ -2,8 +2,8 @@
 <launch>
   <arg name="dji_key" default="ed59ebb66de2a99221de11485dbc4a06095b70a82db07a313115e2273ae7b6c7"/>
   <arg name="use_guidance" default="True" />
-  <arg name="use_pointgrey" default="True" />
-  <arg name="use_usb_cam" default="False" />
+  <arg name="use_pointgrey" default="False" />
+  <arg name="use_usb_cam" default="True" />
   <arg name="use_hokuyo" default="True" />
   <arg name="use_zed" default="False" />
 

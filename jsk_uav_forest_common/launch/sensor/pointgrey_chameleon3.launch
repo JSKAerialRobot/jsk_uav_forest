@@ -11,7 +11,7 @@
       <param name="serial" value="$(arg camera_serial)" />
 
       <param name="frame_rate" value="30" />
-      <param name="auto_white_balance" value="false" />
+      <param name="auto_white_balance" value="true" />
       <param name="white_balance_red" value="500" />
       <param name="white_balance_blue" value="500" />
       <param name="auto_exposure" value="true" />

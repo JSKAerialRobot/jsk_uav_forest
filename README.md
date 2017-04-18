@@ -30,7 +30,7 @@ $ roslaunch jsk_uav_forest_simulation forest_simulation.launch
 $ roslaunch jsk_uav_forest_simulation forest_simulation.launch manual:=true
 ```
 
-- run in gazebo by automanous perception and motion
+- run in gazebo by autonomous perception and motion
 ```
 $ roslaunch jsk_uav_forest_simulation forest_simulation.launch
 ```

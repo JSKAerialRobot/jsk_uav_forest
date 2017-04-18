@@ -100,19 +100,19 @@ class CircleMotion:
     def odomCallback(self, msg):
         self.odom_ = msg
         self.uav_xy_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
-    	if self.use_dji_ == True:
-		    self.uav_xy_pos_[1] *= -1    
-	
+        if self.use_dji_ == True:
+            self.uav_xy_pos_[1] *= -1
+
         self.uav_z_pos_ = msg.pose.pose.position.z
         quaternion = np.array([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])
-        
+
         self.uav_yaw_ = tf.transformations.euler_from_quaternion(quaternion)[2]
         if self.use_dji_ == True:
-			self.uav_yaw_ *= -1
+            self.uav_yaw_ *= -1
 
         if self.odom_update_flag_ == True:
             if self.uav_yaw_ - self.uav_yaw_old_ > 5.0:
-                self.uav_yaw_overflow_ -= 1 
+                self.uav_yaw_overflow_ -= 1
             elif self.uav_yaw_old_ - self.uav_yaw_old_ < -5.0:
                 self.uav_yaw_overflow_ += 1
         self.uav_accumulated_yaw_ = self.uav_yaw_ + 2 * math.pi * self.uav_yaw_overflow_
@@ -198,15 +198,15 @@ class CircleMotion:
         nav_z_vel = target_z - self.uav_z_pos_
         nav_yaw_vel = math.atan2(circle_center_xy[1], circle_center_xy[0]) * self.nav_yaw_pgain_ - target_y_vel / radius #feedback+feedforward
         nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
-        
-        vel_msg = Twist() 
+
+        vel_msg = Twist()
         vel_msg.linear.x = nav_xy_vel[0]
         vel_msg.linear.y = nav_xy_vel[1]
         vel_msg.linear.z = nav_z_vel
         vel_msg.angular.z = nav_yaw_vel
 
         return vel_msg
-   
+
     def waitCycle(self, cycle, reset):
         if reset == 'True':
             self.cycle_count_ = 0
@@ -221,7 +221,7 @@ class CircleMotion:
     def controlCallback(self, event):
         if (not self.odom_update_flag_) or (not self.task_start_):
             return
-        
+
         #navigation
         vel_msg = Twist()
         if self.state_machine_ == self.INITIAL_STATE_:
@@ -229,7 +229,7 @@ class CircleMotion:
         if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
             vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_) #hover
         if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
-            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_, self.tree_xy_pos_[1]]), 
+            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_, self.tree_xy_pos_[1]]),
                                                     self.takeoff_height_,
                                                     self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
         if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
@@ -303,7 +303,7 @@ class CircleMotion:
 
         self.vel_pub_.publish(vel_msg)
         if self.use_dji_ == True:
-            self.drone_.velocity_control(0, vel_msg.linear.x, -vel_msg.linear.y, vel_msg.linear.z, vel_msg.angular.z) #machine frame
+            self.drone_.velocity_control(0, vel_msg.linear.x, -vel_msg.linear.y, vel_msg.linear.z, -vel_msg.angular.z * 180 / math.pi) #machine frame
 
 if __name__ == '__main__':
     try:

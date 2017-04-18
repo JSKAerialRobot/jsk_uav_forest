@@ -5,6 +5,7 @@
   <arg name="gui" default="true" />
   <arg name="use_ground_truth" default="true" />
   <arg name="manual" default="false" />
+  <arg name="task_kind" default="2" />
 
   <arg name="start_x" value="-8"/>
   <arg name="start_y" value="0"/>
@@ -31,6 +32,7 @@
   <include file="$(find jsk_uav_forest_motion)/launch/motion.launch">
     <arg name="use_dji" value="False" />
     <arg name="uav_odom_topic_name" value="/ground_truth/state" />
+    <arg name="task_kind" value="$(arg task_kind)" />
   </include>
 
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find jsk_uav_forest_simulation)/launch/simulation.rviz" unless="$(arg headless)" respawn="true"/>

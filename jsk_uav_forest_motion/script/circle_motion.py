@@ -87,7 +87,8 @@ class CircleMotion:
         self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
         self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
-        
+        self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
+
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
@@ -271,9 +272,12 @@ class CircleMotion:
 
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
-                self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
-                self.circle_initial_yaw_ = self.uav_accumulated_yaw_
-                self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
+                if self.task_kind_ == 1:
+                    self.state_machine_ = self.RETURN_HOME_STATE_
+                elif self.task_kind_ == 2:
+                    self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
+                    self.circle_initial_yaw_ = self.uav_accumulated_yaw_
+                    self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
 
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:

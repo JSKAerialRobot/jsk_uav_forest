@@ -65,8 +65,6 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("target_tree_drift_thre", target_tree_drift_thre_, 0.5);
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17);
   nhp_.param("verbose", verbose_, false);
-  nhp_.param("left_hand_frame", left_hand_frame_, false);
-  if(left_hand_frame_) ROS_WARN("Use left hand frame for odometry, i.e. DJI");
 
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_cluster_ = nh_.advertise<sensor_msgs::LaserScan>(tree_cluster_topic_name_, 1);
@@ -140,21 +138,10 @@ void TreeDetector::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
   tf::Matrix3x3  uav_orientation_(uav_q);
   tfScalar r,p,y;
   uav_orientation_.getRPY(r, p, y);
-  if(left_hand_frame_)
-    {
-      uav_odom_.setX(uav_msg->pose.pose.position.x);
-      uav_odom_.setY(-uav_msg->pose.pose.position.y);
-      uav_odom_.setZ(uav_msg->pose.pose.position.z);
-      uav_roll_ = r; uav_pitch_ = -p; uav_yaw_ = -y;
-    }
-  else
-    {
-      uav_odom_.setX(uav_msg->pose.pose.position.x);
-      uav_odom_.setY(uav_msg->pose.pose.position.y);
-      uav_odom_.setZ(uav_msg->pose.pose.position.z);
-      uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
-    }
-
+  uav_odom_.setX(uav_msg->pose.pose.position.x);
+  uav_odom_.setY(uav_msg->pose.pose.position.y);
+  uav_odom_.setZ(uav_msg->pose.pose.position.z);
+  uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
 }
 
 void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_msg)

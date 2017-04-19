@@ -8,8 +8,8 @@ from nav_msgs.msg import Odometry
 
 def odometryCallback(msg):
     br = tf.TransformBroadcaster()
-    pos = np.array([msg.pose.pose.position.x, -msg.pose.pose.position.y, msg.pose.pose.position.z])
-    ori = np.array([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, -msg.pose.pose.orientation.w])
+    pos = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z])
+    ori = np.array([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])
     br.sendTransform(pos, ori, msg.header.stamp, "/uav", "/world")
     br.sendTransform(pos, ori, msg.header.stamp, "/laser", "/world")
 

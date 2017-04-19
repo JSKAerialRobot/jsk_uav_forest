@@ -55,6 +55,7 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("camera_info_topic_name", camera_info_topic_name_, string("camera_info"));
   nhp_.param("laser_scan_topic_name", laser_scan_topic_name_, string("scan"));
   nhp_.param("tree_location_topic_name", tree_location_topic_name_, string("tree_location"));
+  nhp_.param("tree_global_location_topic_name", tree_global_location_topic_name_, string("tree_global_location"));
   nhp_.param("tree_cluster_topic_name", tree_cluster_topic_name_, string("tree_cluster"));
   nhp_.param("sub_ctrl_srv_topic_name", sub_ctrl_srv_topic_name_, string("sub_control"));
 
@@ -68,6 +69,7 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("verbose", verbose_, false);
 
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
+  pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
   pub_tree_cluster_ = nh_.advertise<sensor_msgs::LaserScan>(tree_cluster_topic_name_, 1);
   sub_ctrl_srv_ = nh_.advertiseService(sub_ctrl_srv_topic_name_, &TreeDetector::subControlCallback, this);
 }
@@ -264,6 +266,12 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
   target_msg.point.x = target_tree_local_location.x();
   target_msg.point.y = target_tree_local_location.y();
   pub_tree_location_.publish(target_msg);
+  geometry_msgs::PointStamped target_global_msg;
+  target_global_msg.header = laser_msg->header;
+  target_global_msg.point.x = target_tree_global_location_.x();
+  target_global_msg.point.y = target_tree_global_location_.y();
+  pub_tree_global_location_.publish(target_global_msg);
+  
 
   /* TODO: we need record method for multiple trees using the odom of UAV */
 }

@@ -30,11 +30,13 @@ class OdomGenerator:
 
         time = (msg.header.stamp - self.modified_odom_old_stamp_).to_sec()
         self.modified_odom_.header = msg.header
-        self.modified_odom_.pose.pose.orientation = msg.pose.pose.orientation
-        self.modified_odom_.pose.pose.position.z = msg.pose.pose.position.z
+        self.modified_odom_.pose.pose.orientation.x = msg.pose.pose.orientation.x
+        self.modified_odom_.pose.pose.orientation.y = -msg.pose.pose.orientation.y
+        self.modified_odom_.pose.pose.orientation.z = -msg.pose.pose.orientation.z
+        self.modified_odom_.pose.pose.orientation.w = msg.pose.pose.orientation.w
         self.modified_odom_.pose.pose.position.x += (msg.twist.twist.linear.x * time)
-        self.modified_odom_.pose.pose.position.y += (msg.twist.twist.linear.y * time)
-
+        self.modified_odom_.pose.pose.position.y += (-msg.twist.twist.linear.y * time)
+        self.modified_odom_.pose.pose.position.z = msg.pose.pose.position.z
         self.uav_odom_pub_.publish(self.modified_odom_)
         self.modified_odom_old_stamp_ = msg.header.stamp
 

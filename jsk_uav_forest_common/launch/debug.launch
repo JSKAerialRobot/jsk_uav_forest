@@ -21,8 +21,6 @@
     <param name="laser_scan_topic_name" value="/shadow_filtered" />
     <param name="clurstering_max_radius" value="0.4" />
     <param name="uav_odom_topic_name" value="/modified_odom"/>
-
     <param name="verbose" value="false" />
-    <param name="left_hand_frame" value="true" />
   </node>
 </launch>

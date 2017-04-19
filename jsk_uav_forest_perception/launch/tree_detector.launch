@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="simulation" default="false" />
-  <arg name="use_dji" default="false" />
   <arg name="uav_odom_topic_name" default="uav_odom" />
   <arg name="image_name" default="/camera/image_rect" />
   
@@ -24,7 +23,6 @@
     <param name="uav_odom_topic_name" value="/ground_truth/state" if="$(arg simulation)"/>
     <param name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" unless="$(arg simulation)"/>
     <param name="verbose" value="false" />
-    <param name="left_hand_frame" value="$(arg use_dji)" />
   </node>
 
 </launch>

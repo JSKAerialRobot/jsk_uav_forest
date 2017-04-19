@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="task_kind" default="1" />
   <!-- bringup -->
   <include file="$(find jsk_uav_forest_common)/launch/m100_bringup.launch" >
   </include>
@@ -11,5 +12,6 @@
   <include file="$(find jsk_uav_forest_motion)/launch/motion.launch">
     <arg name="use_dji" value="True" />
     <arg name="uav_odom_topic_name" value="/modified_odom" /> 
+    <arg name="task_kind" value="$(arg task_kind)" />
   </include>
 </launch>

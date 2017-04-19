@@ -8,7 +8,6 @@
   <include file="$(find jsk_uav_forest_perception)/launch/tree_detector.launch">
     <arg name="simulation" value="True" unless="$(arg use_dji)" />
     <arg name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" />
-    <arg name="use_dji" default="$(arg use_dji)" />
   </include>
 
   ##### Motion Node #####

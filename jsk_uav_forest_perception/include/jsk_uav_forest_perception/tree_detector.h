@@ -77,10 +77,11 @@ private:
   string sub_ctrl_srv_topic_name_;
   bool tree_cluster_pub_;
   double color_region_tree_clustering_angle_diff_thre_;
+  double first_detection_depth_thre_;
   double target_tree_drift_thre_;
   double uav_tilt_thre_;
   bool verbose_;
-  
+
   bool camera_info_update_;
   bool color_region_update_;
   bool detector_from_image_;

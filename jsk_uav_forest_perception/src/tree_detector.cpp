@@ -63,6 +63,7 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("tree_cluster_pub", tree_cluster_pub_, true);
   nhp_.param("color_region_tree_clustering_angle_diff_thre", color_region_tree_clustering_angle_diff_thre_, 0.10);
   nhp_.param("target_tree_drift_thre", target_tree_drift_thre_, 0.5);
+  nhp_.param("first_detection_depth_thre", first_detection_depth_thre_, 8.0); // [m]
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17);
   nhp_.param("verbose", verbose_, false);
   nhp_.param("left_hand_frame", left_hand_frame_, false);
@@ -189,6 +190,12 @@ void TreeDetector::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser
           if(fabs(laser_direction) > fov)
             {
               if(verbose_) cout << "eliminate: laser_direction:" << laser_direction << "; " << "fov: " << fov << endl;
+              continue;
+            }
+
+          if(laser_msg->ranges[*it] > first_detection_depth_thre_)
+            {
+              if(verbose_) cout << "eliminate: depth: " << laser_msg->ranges[*it] << endl;
               continue;
             }
 
@@ -338,7 +345,8 @@ void TreeDetector::treeClustering(const sensor_msgs::LaserScan& scan_in, vector<
     if(verbose_)
       {
         cout << i << ": direction: " << (range_blobs[i][0] + size/2) * scan_in.angle_increment + scan_in.angle_min
-             << "[rad]; size: " << size << "; radius: "
+             << "[rad]; distance: " << scan_in.ranges[range_blobs[i][0] + size/2]
+             << "[m]; size: " << size << "; radius: "
              << radius << "[m]; length: " << length << "[m]; angle: " << angle << "[rad]" << endl;
       }
 #endif

@@ -65,6 +65,7 @@ private:
   ros::Subscriber sub_clustered_laser_scan_;
   ros::Subscriber sub_laser_scan_;
   ros::Publisher pub_tree_location_;
+  ros::Publisher pub_tree_global_location_;
   ros::Publisher pub_tree_cluster_;
   ros::ServiceServer sub_ctrl_srv_;
 
@@ -73,6 +74,7 @@ private:
   string camera_info_topic_name_;
   string laser_scan_topic_name_;
   string tree_location_topic_name_;
+  string tree_global_location_topic_name_;
   string tree_cluster_topic_name_;
   string sub_ctrl_srv_topic_name_;
   bool tree_cluster_pub_;

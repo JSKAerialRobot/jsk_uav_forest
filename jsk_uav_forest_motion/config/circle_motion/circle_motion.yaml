@@ -15,3 +15,7 @@ nav_vel_converge0.8_thresh : 1.0
 circle_radius : 1.0
 circle_y_vel : 0.1
 tree_detection_wait : 1.0
+
+lidar_tc : 0.5
+lidar_noise_cut_thresh : 0.5
+guidance_vel_weight : 0.9

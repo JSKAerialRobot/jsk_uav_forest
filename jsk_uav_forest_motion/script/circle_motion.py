@@ -101,7 +101,7 @@ class CircleMotion:
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.use_lidar_ = rospy.get_param("~use_lidar", False)
         self.lidar_tc_ = rospy.get_param("~lidar_tc", 0.5) #0.0~1.0
-        self.lidar_noise_cut_thresh_ = rospy.get_param("~lidar_noise_cut_thresh", 0.6)
+        self.lidar_noise_cut_thresh_ = rospy.get_param("~lidar_noise_cut_thresh", 0.5)
         self.use_guidance_vel_ = rospy.get_param("~use_guidance_vel", True)
         self.guidance_vel_weight_ = rospy.get_param("~guidance_vel_weight", 0.9)
 
@@ -122,7 +122,10 @@ class CircleMotion:
     def odomCallback(self, msg):
         self.odom_ = msg
         self.uav_xy_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
-        self.uav_z_pos_ = msg.pose.pose.position.z
+        if self.use_lidar_ == True:
+            self.uav_z_pos_ = self.uav_lidar_z_
+        else:
+            self.uav_z_pos_ = msg.pose.pose.position.z
         quaternion = np.array([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])
 
         self.uav_roll_ = tf.transformations.euler_from_quaternion(quaternion)[0]

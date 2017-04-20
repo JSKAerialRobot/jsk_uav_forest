@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="task_kind" default="1" />
+  <arg name="rqt_gui" default="False" />
   <!-- bringup -->
   <include file="$(find jsk_uav_forest_common)/launch/m100_bringup.launch" >
   </include>
@@ -13,5 +14,6 @@
     <arg name="use_dji" value="True" />
     <arg name="uav_odom_topic_name" value="/modified_odom" /> 
     <arg name="task_kind" value="$(arg task_kind)" />
+    <arg name="rqt_gui" value="$(arg rqt_gui)" />
   </include>
 </launch>

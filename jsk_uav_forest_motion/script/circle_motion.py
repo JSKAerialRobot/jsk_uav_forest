@@ -63,6 +63,7 @@ class CircleMotion:
         
         self.lidar_update_flag_ = False
         self.uav_lidar_z_ = 0.0
+        self.uav_lidar_z_old_ = 0.0
         
         self.cycle_count_ = 0
         self.tree_xy_pos_ = np.zeros(2)
@@ -92,7 +93,9 @@ class CircleMotion:
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
         self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
-        self.use_lidar_ = False
+        self.use_lidar_ = rospy.get_param("~use_lidar", False)
+        self.lidar_tc_ = rospy.get_param("~lidar_tc", 0.1) #0.0~1.0
+        self.lidar_noise_cut_thresh_ = rospy.get_param("~lidar_noise_cut_thresh", 0.5)
 
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -149,14 +152,18 @@ class CircleMotion:
         return res
 
     def lidarCallback(self, msg):
-        if odom_update_flag_ == False:
+        if self.odom_update_flag_ == False:
+            self.uav_lidar_z_old_ = self.uav_lidar_z_
             return
-        self.uav_lidar_z_ = msg.ranges[0] * math.cos(uav_roll_) * math.cos(uav_pitch_)
-        self.lidar_update_flag_ = True
+
+        lidar_val = msg.ranges[0] * math.cos(self.uav_roll_) * math.cos(self.uav_pitch_)
+        if lidar_val > self.lidar_noise_cut_thresh_:
+            self.uav_lidar_z_ = self.lidar_tc_ * self.uav_lidar_old_z + (1.0 - self.lidar_tc_) * lidar_val
         pub_msg = Float32()
         pub_msg.data = self.uav_lidar_z_
         self.debug_pub_.publish(pub_msg)
-
+        self.lidar_update_flag_ = True
+       
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
             delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_]) 

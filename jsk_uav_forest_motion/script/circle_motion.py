@@ -285,7 +285,9 @@ class CircleMotion:
                 return False
 
     def controlCallback(self, event):
-        if (not self.odom_update_flag_) or (not self.lidar_update_flag_) or (not self.task_start_):
+        if (not self.odom_update_flag_) or (not self.task_start_):
+            return
+        if self.use_lidar_ and (not self.lidar_update_flag_):
             return
 
     #navigation

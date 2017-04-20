@@ -7,14 +7,14 @@ import math
 import tf
 import numpy as np
 from dji_sdk.dji_drone import DJIDrone
-from geometry_msgs.msg import Twist, Quaternion, PointStamped
+from geometry_msgs.msg import Twist, Quaternion, PointStamped, Vector3Stamped
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String, Float32
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool, SetBoolResponse
 
 class CircleMotion:
-    
+
     def init(self):
         if sys.argv[1] == 'True':
             self.use_dji_ = True
@@ -60,24 +60,30 @@ class CircleMotion:
         self.uav_yaw_old_ = 0.0
         self.uav_yaw_overflow_ = 0
         self.uav_accumulated_yaw_ = 0.0
-        
+
         self.lidar_update_flag_ = False
         self.uav_lidar_z_ = 0.0
         self.uav_lidar_z_old_ = 0.0
-        
+
+        self.guidance_vel_update_flag_ = False
+        self.guidance_vel_z_diff_ = 0.0
+        self.guidance_vel_stamp_old_ = rospy.Time.now()
+
         self.cycle_count_ = 0
         self.tree_xy_pos_ = np.zeros(2)
-        
+
         self.task_start_ = False;
-    
+
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
         self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
         self.lidar_sub_topic_name_ = rospy.get_param("~lidar_sub_topic_name", "/guidance/ultrasonic")
+        self.guidance_vel_sub_topic_name_ = rospy.get_param("~guidance_vel_topic_name", "/guidance/velocity")
         self.tree_detection_start_service_name_ = rospy.get_param("~tree_detection_start_service_name", "sub_control")
         self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
+
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
@@ -94,8 +100,10 @@ class CircleMotion:
         self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.use_lidar_ = rospy.get_param("~use_lidar", False)
-        self.lidar_tc_ = rospy.get_param("~lidar_tc", 0.1) #0.0~1.0
-        self.lidar_noise_cut_thresh_ = rospy.get_param("~lidar_noise_cut_thresh", 0.5)
+        self.lidar_tc_ = rospy.get_param("~lidar_tc", 0.5) #0.0~1.0
+        self.lidar_noise_cut_thresh_ = rospy.get_param("~lidar_noise_cut_thresh", 0.6)
+        self.use_guidance_vel_ = rospy.get_param("~use_guidance_vel", True)
+        self.guidance_vel_weight_ = rospy.get_param("~guidance_vel_weight", 0.9)
 
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -105,6 +113,7 @@ class CircleMotion:
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         self.lidar_sub_ = rospy.Subscriber(self.lidar_sub_topic_name_, LaserScan, self.lidarCallback)
+        self.guidance_vel_sub_ = rospy.Subscriber(self.guidance_vel_sub_topic_name_, Vector3Stamped, self.guidanceVelCallback)
         self.task_start_service_ = rospy.Service(self.task_start_service_name_, SetBool, self.taskStartCallback)
 
         ###debug###
@@ -119,7 +128,7 @@ class CircleMotion:
         self.uav_roll_ = tf.transformations.euler_from_quaternion(quaternion)[0]
         self.uav_pitch_ = tf.transformations.euler_from_quaternion(quaternion)[1]
         self.uav_yaw_ = tf.transformations.euler_from_quaternion(quaternion)[2]
-       
+
         if self.odom_update_flag_ == True:
             if self.uav_yaw_ - self.uav_yaw_old_ > 5.0:
                 self.uav_yaw_overflow_ -= 1
@@ -138,7 +147,7 @@ class CircleMotion:
         self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
 
     def taskStartCallback(self, req):
-        res = SetBoolResponse()        
+        res = SetBoolResponse()
         if req.data == True:
             self.task_start_ = True
             res.success = True
@@ -151,24 +160,49 @@ class CircleMotion:
             rospy.loginfo("Task does not start")
         return res
 
-    def lidarCallback(self, msg):
-        if self.odom_update_flag_ == False:
-            self.uav_lidar_z_old_ = self.uav_lidar_z_
+    def guidanceVelCallback(self, msg):
+        if self.guidance_vel_update_flag_ == False:
+            self.guidance_vel_update_flag_ = True
+            self.guidance_vel_stamp_old_ = msg.header.stamp
             return
+        self.guidance_vel_z_diff_ = (-msg.vector.z * math.cos(self.uav_roll_) * math.cos(self.uav_pitch_)) * (msg.header.stamp - self.guidance_vel_stamp_old_).to_sec()
+        self.guidance_vel_stamp_old_ = msg.header.stamp
+
+    def lidarCallback(self, msg):
+        if self.use_guidance_vel_ == True:
+            if (self.odom_update_flag_ == False) or (self.guidance_vel_update_flag_ == False):
+                self.uav_lidar_z_old_ = self.uav_lidar_z_
+                self.lidar_update_flag_ = True
+                return
+        else:
+            if self.odom_update_flag_ == False:
+                self.uav_lidar_z_old_ = self.uav_lidar_z_
+                self.lidar_update_flag_ = True
+                return
 
         lidar_val = msg.ranges[0] * math.cos(self.uav_roll_) * math.cos(self.uav_pitch_)
-        if lidar_val > self.lidar_noise_cut_thresh_:
-            self.uav_lidar_z_ = self.lidar_tc_ * self.uav_lidar_old_z + (1.0 - self.lidar_tc_) * lidar_val
+
+        if self.use_guidance_vel_ == True:
+            self.uav_lidar_z_ = self.uav_lidar_z_old_ + self.guidance_vel_z_diff_ #update by guidance velocity integration
+            if lidar_val > self.lidar_noise_cut_thresh_: #if reliable
+                self.uav_lidar_z_ = lidar_val * (1.0 - self.guidance_vel_weight_) + self.uav_lidar_z_ * self.guidance_vel_weight_ #fusion
+            self.uav_lidar_z_ = self.lidar_tc_ * self.uav_lidar_z_old_ + (1.0 - self.lidar_tc_) * self.uav_lidar_z_ #LPF
+        else:
+            if lidar_val > self.lidar_noise_cut_thresh_: #if reliable
+                self.uav_lidar_z_ = self.lidar_tc_ * self.uav_lidar_z_old_ + (1.0 - self.lidar_tc_) * lidar_val #LPF
+            else:
+                pass #no update
+        self.uav_lidar_z_old_ = self.uav_lidar_z_ #update
+
         pub_msg = Float32()
         pub_msg.data = self.uav_lidar_z_
         self.debug_pub_.publish(pub_msg)
-        self.lidar_update_flag_ = True
-       
+
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
-            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_]) 
+            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_])
         elif frame == self.LOCAL_FRAME_:
-            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_]) 
+            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_])
         else:
             return
 
@@ -198,16 +232,16 @@ class CircleMotion:
             delta_xy = target_xy
         else:
             return
-        
+
         delta_z = target_z - self.uav_z_pos_
         delta_yaw = target_yaw - self.uav_yaw_
-       
+
         nav_xy_vel = delta_xy * self.nav_xy_pos_pgain_
         nav_z_vel = delta_z * self.nav_z_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
-      
+
         nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
-        vel_msg = Twist() 
+        vel_msg = Twist()
         vel_msg.linear.x = nav_xy_vel[0]
         vel_msg.linear.y = nav_xy_vel[1]
         vel_msg.linear.z = nav_z_vel
@@ -270,7 +304,7 @@ class CircleMotion:
             vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_, self.tree_xy_pos_[1]]), 
                                                     self.takeoff_height_,
                                                     self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
-            
+
         if self.state_machine_ == self.RETURN_HOME_STATE_:
         #use global frame
             #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_)
@@ -310,18 +344,18 @@ class CircleMotion:
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
                 self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
-                        
+
         elif self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.state_machine_ = self.RETURN_HOME_STATE_
-        
+
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
             pass
     #end state machine
-    
+
     #publication
         self.state_machine_pub_.publish(self.state_name_[self.state_machine_])
-            
+
         target_pos_msg = Odometry()
         target_pos_msg.header = self.odom_.header
         if self.target_frame_ == self.GLOBAL_FRAME_:

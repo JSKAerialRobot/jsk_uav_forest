@@ -16,4 +16,8 @@
     <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)" if="$(arg use_dji)"/>
     <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
     </node>
+ 
+  ##### rqt gui #####
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" args="--perspective-file $(find jsk_uav_forest_motion)/launch/jsk_uav_forest.perspective"/>
+
 </launch>

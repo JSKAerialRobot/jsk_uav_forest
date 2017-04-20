@@ -1,0 +1,71 @@
+{
+  "keys": {}, 
+  "groups": {
+    "pluginmanager": {
+      "keys": {
+        "running-plugins": {
+          "type": "repr", 
+          "repr": "{u'rqt_service_caller/ServiceCaller': [1]}"
+        }
+      }, 
+      "groups": {
+        "plugin__rqt_service_caller__ServiceCaller__1": {
+          "keys": {}, 
+          "groups": {
+            "dock_widget__ServiceCallerWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr", 
+                  "repr": "True"
+                }, 
+                "parent": {
+                  "type": "repr", 
+                  "repr": "None"
+                }, 
+                "dock_widget_title": {
+                  "type": "repr", 
+                  "repr": "u'Service Caller'"
+                }
+              }, 
+              "groups": {}
+            }, 
+            "plugin": {
+              "keys": {
+                "splitter_orientation": {
+                  "type": "repr", 
+                  "repr": "2"
+                }
+              }, 
+              "groups": {}
+            }
+          }
+        }
+      }
+    }, 
+    "mainwindow": {
+      "keys": {
+        "geometry": {
+          "type": "repr(QByteArray.hex)", 
+          "repr(QByteArray.hex)": "QtCore.QByteArray('01d9d0cb0001000000000437000000d9000006a20000027100000441000000ff0000069800000267000000000000')", 
+          "pretty-print": "     7     q A     g   "
+        }, 
+        "state": {
+          "type": "repr(QByteArray.hex)", 
+          "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff00000000fd0000000100000002000002580000013afc0100000001fb00000072007200710074005f0073006500720076006900630065005f00630061006c006c00650072005f005f005300650072007600690063006500430061006c006c00650072005f005f0031005f005f005300650072007600690063006500430061006c006c006500720057006900640067006500740100000000000002580000025000ffffff000002580000000000000004000000040000000800000008fc00000001000000030000000100000036004d0069006e0069006d0069007a006500640044006f0063006b00570069006400670065007400730054006f006f006c0062006100720000000000ffffffff0000000000000000')", 
+          "pretty-print": "                 rrqt_service_caller__ServiceCaller__1__ServiceCallerWidget                            6MinimizedDockWidgetsToolbar        "
+        }
+      }, 
+      "groups": {
+        "toolbar_areas": {
+          "keys": {
+            "MinimizedDockWidgetsToolbar": {
+              "type": "repr", 
+              "repr": "8"
+            }
+          }, 
+          "groups": {}
+        }
+      }
+    }
+  }
+}

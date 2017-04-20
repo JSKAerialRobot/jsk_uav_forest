@@ -124,11 +124,17 @@ class CircleMotion:
         self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
 
     def taskStartCallback(self, req):
-        self.task_start_ = True
-        res = SetBoolResponse()
-        res.success = True
-        res.message = "Task Start"
-        rospy.loginfo("Task Start")
+        res = SetBoolResponse()        
+        if req.data == True:
+            self.task_start_ = True
+            res.success = True
+            res.message = "Task Start"
+            rospy.loginfo("Task Start")
+        else:
+            self.task_start_ = False
+            res.success = False
+            res.message = "Task does not start"
+            rospy.loginfo("Task does not start")
         return res
 
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):

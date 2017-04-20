@@ -3,6 +3,7 @@
   <arg name="use_dji" default="False" />
   <arg name="uav_odom_topic_name" default="uav/odom" />
   <arg name="task_kind" default="1" />
+  <arg name="rqt_gui" default="False" />
 
   ##### Perception Node #####
   <include file="$(find jsk_uav_forest_perception)/launch/tree_detector.launch">
@@ -16,4 +17,8 @@
     <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)" if="$(arg use_dji)"/>
     <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
     </node>
+ 
+  ##### rqt gui #####
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" if="$(arg rqt_gui)" args="--perspective-file $(find jsk_uav_forest_motion)/launch/jsk_uav_forest.perspective"/>
+
 </launch>

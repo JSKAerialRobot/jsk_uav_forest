@@ -39,6 +39,15 @@ $ roslaunch jsk_uav_forest_simulation forest_simulation.launch
 $ rosservice call /task_start true
 ```
 
+
+## how to activate plannar
+
+- When adding obstacles, remember not to block the view from drone to red tree:
+```
+$ roslaunch jsk_uav_forest_simulation forest_simulation.launch plannar:=true
+```
+
+
 ## forest challenge (using DJI M100 + DJI Guidance + Pointgrey Chameleon3 + Hokuyo UST20LX)
 1. integrated launch file in UAV
 ```

@@ -50,6 +50,7 @@ class CircleMotion:
         self.state_machine_ = self.INITIAL_STATE_
         self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "return home"]
         self.tree_detection_wait_count_ = 0
+        self.circle_count_ = 0
 
         self.odom_update_flag_ = False
         self.uav_xy_pos_ = np.zeros(2)
@@ -235,7 +236,7 @@ class CircleMotion:
                                                     self.takeoff_height_,
                                                     self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
         if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
-            vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_, self.circle_y_vel_, self.circle_radius_)
+            vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_count_ * 0.5, self.circle_y_vel_, self.circle_radius_)
         if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
         #use global frame
             #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.circle_initial_xy_, self.takeoff_height_, self.circle_initial_yaw_)
@@ -282,7 +283,10 @@ class CircleMotion:
 
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
-                self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
+                self.circle_count_ += 1
+                self.circle_initial_yaw_ = self.uav_accumulated_yaw_
+                if self.circle_count_ == 2:
+                    self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
 
         elif self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):

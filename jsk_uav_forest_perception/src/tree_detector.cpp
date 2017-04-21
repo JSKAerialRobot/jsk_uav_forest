@@ -57,8 +57,7 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("tree_location_topic_name", tree_location_topic_name_, string("tree_location"));
   nhp_.param("tree_global_location_topic_name", tree_global_location_topic_name_, string("tree_global_location"));
   nhp_.param("tree_cluster_topic_name", tree_cluster_topic_name_, string("tree_cluster"));
-  nhp_.param("sub_ctrl_srv_topic_name", sub_ctrl_srv_topic_name_, string("sub_control"));
-
+  nhp_.param("perception_start_topic_name", perception_start_topic_name_, string("perception_start"));
   nhp_.param("clurstering_max_radius", clurstering_max_radius_, 0.1);
   nhp_.param("clurstering_min_points", clurstering_min_points_, 3);
   nhp_.param("tree_cluster_pub", tree_cluster_pub_, true);
@@ -71,22 +70,21 @@ TreeDetector::TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp):
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
   pub_tree_cluster_ = nh_.advertise<sensor_msgs::LaserScan>(tree_cluster_topic_name_, 1);
-  sub_ctrl_srv_ = nh_.advertiseService(sub_ctrl_srv_topic_name_, &TreeDetector::subControlCallback, this);
+  sub_perception_start_ = nh_.subscribe(perception_start_topic_name_, 1, &TreeDetector::perceptionStartCallback, this);
 }
 
-bool TreeDetector::subControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
+void TreeDetector::perceptionStartCallback(const std_msgs::BoolConstPtr& msg)
 {
-  if(req.data)
+  if(msg->data)
     {
-      ROS_INFO("start subscribe");
+      ROS_INFO("start perception");
       subscribe();
     }
   else
     {
-      ROS_INFO("stop subscribe");
+      ROS_INFO("stop perception");
       unsubscribe();
     }
-  return true;
 }
 
 void TreeDetector::subscribe()

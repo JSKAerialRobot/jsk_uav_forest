@@ -9,7 +9,7 @@ import numpy as np
 from dji_sdk.dji_drone import DJIDrone
 from geometry_msgs.msg import Twist, Quaternion, PointStamped, Vector3Stamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import String, Float32
+from std_msgs.msg import String, Float32, Bool
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool, SetBoolResponse
 
@@ -71,7 +71,7 @@ class CircleMotion:
         self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
-        self.tree_detection_start_service_name_ = rospy.get_param("~tree_detection_start_service_name", "sub_control")
+        self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "perception_start")
         self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
 
         self.control_rate_ = rospy.get_param("~control_rate", 20)
@@ -95,6 +95,7 @@ class CircleMotion:
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
         self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
         self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
+        self.tree_detection_start_pub_ = rospy.Publisher(self.tree_detection_start_pub_topic_name_, Bool, queue_size = 10)
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         self.task_start_service_ = rospy.Service(self.task_start_service_name_, SetBool, self.taskStartCallback)
@@ -117,9 +118,9 @@ class CircleMotion:
         self.odom_update_flag_ = True
 
     def treeDetectionStart(self):
-        rospy.wait_for_service(self.tree_detection_start_service_name_)
-        tree_detection_start = rospy.ServiceProxy(self.tree_detection_start_service_name_, SetBool)
-        tree_detection_start(True)
+        msg = Bool()
+        msg.data = True
+        self.tree_detection_start_pub_.publish(msg)
 
     def treeLocationCallback(self, msg):
         self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])

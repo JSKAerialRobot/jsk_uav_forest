@@ -46,7 +46,7 @@
 #include <geometry_msgs/PointStamped.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
-#include <std_srvs/SetBool.h>
+#include <std_msgs/Bool.h>
 #include <tf/transform_broadcaster.h>
 
 using namespace std;
@@ -64,10 +64,10 @@ private:
   ros::Subscriber sub_camera_info_;
   ros::Subscriber sub_clustered_laser_scan_;
   ros::Subscriber sub_laser_scan_;
+  ros::Subscriber sub_perception_start_;
   ros::Publisher pub_tree_location_;
   ros::Publisher pub_tree_global_location_;
   ros::Publisher pub_tree_cluster_;
-  ros::ServiceServer sub_ctrl_srv_;
 
   string uav_odom_topic_name_;
   string color_region_center_topic_name_;
@@ -76,7 +76,7 @@ private:
   string tree_location_topic_name_;
   string tree_global_location_topic_name_;
   string tree_cluster_topic_name_;
-  string sub_ctrl_srv_topic_name_;
+  string perception_start_topic_name_;
   bool tree_cluster_pub_;
   double color_region_tree_clustering_angle_diff_thre_;
   double first_detection_depth_thre_;
@@ -108,7 +108,7 @@ private:
   void colorRegionCallback(const geometry_msgs::PointStampedConstPtr& color_region_center_msg);
   void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& camera_info);
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
-  bool subControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  void perceptionStartCallback(const std_msgs::BoolConstPtr& msg);
 };
 
 #endif

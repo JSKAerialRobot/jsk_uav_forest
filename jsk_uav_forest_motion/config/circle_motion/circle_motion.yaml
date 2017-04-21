@@ -13,5 +13,5 @@ nav_pos_convergence_thresh : 0.1
 nav_yaw_convergence_thresh : 0.1
 nav_vel_converge0.8_thresh : 1.0
 circle_radius : 1.0
-circle_y_vel : 0.1
+circle_y_vel : 0.2
 tree_detection_wait : 1.0

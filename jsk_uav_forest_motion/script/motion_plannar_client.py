@@ -120,27 +120,35 @@ class MotionPlannar:
             self.target_xy_local_pos_ = self.cvtGlobaltoLocal(self.target_xy_global_pos_)
 
         ## When target global position changes more than threshold or first time get, re-do global planning
+        ## todo: consider changes in z axis
         if np.sqrt(np.sum((self.target_xy_global_pos_ - self.global_landmark_xy_pos_) ** 2)) > self.global_landmark_change_thresh_:
             self.state_machine_ = self.ADJUST_YAW_STATE
             self.global_landmark_xy_pos_ = self.target_xy_global_pos_
 
     def nearestObstacleSafetyDetection(self):
-        nearest_obstalce_distance = 10000.0
-        nearest_obstalce_id = 0
+        nearest_obstalce_distance_to_head_direction = 10000.0
+        nearest_obstalce_id = -1
+        ## get the nearest_obstalce_distance_to_head_direction from laser lines which is shorter than obstacle_ignore radius
         for i in range(0, tree_cluster.ranges.size()):
             if not math.isnan(tree_cluster.ranges[i]):
-                ## Here, x > 0.01 means x != 0.0
-                if abs(tree_cluster.ranges[i]) > 0.01 and abs(tree_cluster.ranges[i]) < nearest_obstalce_distance:
-                    nearest_obstalce_distance = abs(tree_cluster.ranges[i])
-                    nearest_obstalce_id = i
+                if abs(tree_cluster.ranges[i]) < self.drone_obstacle_ignore_maximum_radius_:
+                    obstacle_angle = i * tree_cluster.angle_increment + tree_cluster.angle_min
+                    obstalce_distance_to_head_direction = abs(tree_cluster.ranges[i]) * math.sin(math.pi / 2.0 - obstacle_angle)
+                    if obstalce_distance_to_head_direction < nearest_obstalce_distance_to_head_direction:
+                        nearest_obstacle_distance_to_head_direction = obstalce_distance_to_head_direction
+                        nearest_obstalce_id = i
         nearest_obstacle_angle = nearest_obstalce_id * tree_cluster.angle_increment + tree_cluster.angle_min
-        nearest_obstacle_distance_to_head_direction = nearest_obstalce_distance * math.sin(math.pi / 2.0 - nearest_obstacle_angle)
-        
-        if nearest_obstacle_distance  < self.drone_obstacle_ignore_maximum_radius_ and nearest_obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
+        ## nearest_obstalce_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstalce_id initial value is -1)
+        ## when potential nearest_obstacle makes nearest_obstalce_distance_to_head_direction shorter than safety_minimum_radius, then obstacle-avoidance needs consideration
+        if nearest_obstalce_id >= 0 and nearest_obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
+            ## distance from drone to landmark
             landmark_distance = np.sqrt(np.sum((self.uav_xy_pos_ - self.global_landmark_xy_pos_) ** 2))
-            obstacle_to_landmark_edge = landmark_distance - nearest_obstalce_distance * math.cos(math.pi / 2.0 - nearest_obstacle_angle)
-            theta1 = math.asin(nearest_obstacle_distance_to_head_direction / obstacle_to_landmark_edge)
-            theta2 = math.asin(self.drone_safety_minimum_radius_ / obstacle_to_landmark_edge) - theta1
+            nearest_obstacle_distance = tree_cluster.ranges[nearest_obstalce_id]
+            ## cosin law
+            nearest_obstacle_to_landmark_distance = np.sqrt(nearest_obstacle_distance ** 2 + landmark_distance ** 2 - 2 * nearest_obstacle_distance * landmark_distance * math.cos(math.pi / 2.0 - nearest_obstacle_angle))
+            theta1 = math.asin(nearest_obstacle_distance_to_head_direction / nearest_obstacle_to_landmark_distance)
+            ## todo: move drone a little further to make sure distance is a little larger than drone_safety_minimum_radius
+            theta2 = math.asin(self.drone_safety_minimum_radius_ / nearest_obstacle_to_landmark_distance) - theta1
             ## Right hand coordinate, head direction is x axis
             if nearest_obstacle_angle <= math.pi / 2.0:
                 shift_distance = -landmark_distance * math.tan(theta2)

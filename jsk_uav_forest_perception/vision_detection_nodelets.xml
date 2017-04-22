@@ -1,7 +1,0 @@
-<library path="lib/libvision_detection">
-  <class name="vision_detection/VisionDetector" type="vision_detection::VisionDetector" base_class_type="nodelet::Nodelet">
-    <description>
-      Nodelet for vision detection.
-    </description>
-  </class>
-</library>

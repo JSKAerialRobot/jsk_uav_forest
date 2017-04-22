@@ -6,7 +6,6 @@
 
   <!-- vision base -->
   <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
-    <arg name="independent_nodelet" value="$(arg simulation)" />
     <arg name="image_name" value="$(arg image_name)" unless="$(arg simulation)"/>
   </include>
 
@@ -20,5 +19,5 @@
     <param name="uav_odom_topic_name" value="/ground_truth/state" if="$(arg simulation)"/>
     <param name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" unless="$(arg simulation)"/>
     <param name="verbose" value="false" />
-  </node>
+    </node>
 </launch>

@@ -11,7 +11,7 @@
   <node pkg="laser_filters" type="scan_to_scan_filter_chain" output="screen" name="trees_filter">
     <remap from="scan" to="shadow_filtered" />
     <remap from="scan_filtered" to="scan_clustered" />
-    <rosparam command="load" file="$(find jsk_uav_forest_perception)/param/TreeFilter.yaml" />
+    <rosparam command="load" file="$(find jsk_uav_forest_perception)/param/LaserClustering.yaml" />
 
   </node>
 </launch>

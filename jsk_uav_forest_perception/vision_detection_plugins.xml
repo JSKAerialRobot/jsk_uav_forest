@@ -1,0 +1,7 @@
+<library path="lib/libvision_detection_pluginlib">
+  <class name="vision_detection/IndependentHsvFilter" type="vision_detection::IndependentHsvFilter" base_class_type="vision_detection::DetectorBase">
+    <description>
+      Independent HSV filter.
+    </description>
+  </class>
+</library>

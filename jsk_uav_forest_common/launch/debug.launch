@@ -25,7 +25,6 @@
   ######### Perception Node #########
     <!-- vision base -->
   <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
-    <arg name="independent_nodelet" value="true" />
     <arg name="image_name" value="/camera/image_rect"/>
   </include>
 

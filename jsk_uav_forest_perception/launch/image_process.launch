@@ -1,27 +1,19 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="nodelet_name" default="camera_nodelet_manager" />
-  <arg name="independent_nodelet" default="true" />
   <arg name="headless" default="false" />
   <arg name="image_name" default="/camera/image" />
+  <arg name="plugin_name" default="IndependentHsvFilter" />
 
-  <rosparam file="$(find jsk_uav_forest_perception)/param/VisionDetection.yaml" command="load" />
-
-  <group ns="camera" >
-    <!-- nodelet manager -->
-    <node type="nodelet" pkg="nodelet" name="$(arg nodelet_name)" args="manager" output="screen" if="$(arg independent_nodelet)"/>
-
-    <!-- color region detector -->
-    <node pkg="nodelet" type="nodelet" name="vision_detection"
-          args="load vision_detection/VisionDetector $(arg nodelet_name)" output="screen">
-      <param name="image_topic_name" value="$(arg image_name)"/>
-      <param name="camera_info_topic_name" value="/camera/camera_info" />
-      <param name="laser_scan_topic_name" value="/scan_clustered"/>
-      <param name="verbose" value="true"/>
-      <param name="detect_once" value="true"/>
-      <param name="first_detection_depth_thre" value="9.0"/>
-    </node>
-
-  </group>
+  <!-- color region detector -->
+  <node pkg="jsk_uav_forest_perception" type="vision_detection_node" name="vision_detection"
+        output="screen">
+    <param name="image_topic_name" value="$(arg image_name)"/>
+    <param name="camera_info_topic_name" value="/camera/camera_info" />
+    <param name="laser_scan_topic_name" value="/scan_clustered"/>
+    <param name="verbose" value="true"/>
+    <param name="detect_once" value="true"/>
+    <param name="plugin_name" value="vision_detection/$(arg plugin_name)" />
+    <rosparam file="$(find jsk_uav_forest_perception)/param/$(arg plugin_name).yaml"/>
+  </node>
 
 </launch>

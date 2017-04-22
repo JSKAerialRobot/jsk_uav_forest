@@ -1,8 +1,0 @@
-camera:
-        vision_detection:
-                h_min: 150
-                s_min: 80
-                v_min: 100
-                h_max: 16
-                s_max: 255
-                v_max: 255               

@@ -43,10 +43,13 @@ include_directories(
 add_library(laser_clustering_filter SHARED src/laser_clustering_filter.cpp)
 target_link_libraries(laser_clustering_filter ${catkin_LIBRARIES})
 
-add_library(vision_detection src/vision_detector.cpp)
-target_link_libraries(vision_detection ${catkin_LIBRARIES})
-add_dependencies(vision_detection ${PROJECT_NAME}_gencfg)
+add_library(vision_detection_pluginlib
+  src/vision_detector/independent_hsv_filter.cpp)
+target_link_libraries(vision_detection_pluginlib ${catkin_LIBRARIES})
+add_dependencies(vision_detection_pluginlib ${PROJECT_NAME}_gencfg)
 
+add_executable(vision_detection_node src/vision_detection.cpp)
+target_link_libraries (vision_detection_node ${catkin_LIBRARIES})
 
 add_library(tree_tracking src/tree_tracking.cpp)
 target_link_libraries(tree_tracking ${catkin_LIBRARIES})

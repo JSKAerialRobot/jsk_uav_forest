@@ -50,7 +50,7 @@ class CircleMotion:
         self.state_machine_ = self.INITIAL_STATE_
         self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "return home"]
         self.tree_detection_wait_count_ = 0
-        self.circle_count_ = 0
+        self.circle_motion_count_ = 0
 
         self.odom_update_flag_ = False
         self.uav_xy_pos_ = np.zeros(2)
@@ -87,9 +87,11 @@ class CircleMotion:
         self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
         self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
+        self.circle_motion_times_ = rospy.get_param("~circle_motion_times", 1)
+        self.circle_motion_height_step_ = rospy.get_param("~circle_motion_height_step_", 0.5)
         self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
-
+        
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
@@ -237,7 +239,7 @@ class CircleMotion:
                                                     self.takeoff_height_,
                                                     self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
         if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
-            vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_count_ * 0.5, self.circle_y_vel_, self.circle_radius_)
+            vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_motion_count_ * self.circle_motion_height_step_, self.circle_y_vel_, self.circle_radius_)
         if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
         #use global frame
             #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.circle_initial_xy_, self.takeoff_height_, self.circle_initial_yaw_)
@@ -284,9 +286,9 @@ class CircleMotion:
 
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
-                self.circle_count_ += 1
+                self.circle_motion_count_ += 1
                 self.circle_initial_yaw_ = self.uav_accumulated_yaw_
-                if self.circle_count_ == 2:
+                if self.circle_motion_count_ == self.circle_motion_times_:
                     self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
 
         elif self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:

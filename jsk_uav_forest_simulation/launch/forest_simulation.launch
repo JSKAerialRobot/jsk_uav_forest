@@ -8,6 +8,7 @@
   <arg name="manual" default="false" />
   <arg name="task_kind" default="2" />
   <arg name="rqt_gui" default="True" />
+  <arg name="circle_motion_times" default="1" />
 
   <arg name="start_x" value="-8"/>
   <arg name="start_y" value="0"/>
@@ -35,6 +36,7 @@
     <arg name="use_dji" value="False" />
     <arg name="uav_odom_topic_name" value="/ground_truth/state" />
     <arg name="task_kind" value="$(arg task_kind)" />
+    <arg name="circle_motion_times" value="$(arg circle_motion_times)" />  
     <arg name="rqt_gui" value="$(arg rqt_gui)" />
   </include>
 

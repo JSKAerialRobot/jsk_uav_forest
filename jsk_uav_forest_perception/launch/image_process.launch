@@ -5,17 +5,22 @@
   <arg name="headless" default="false" />
   <arg name="image_name" default="/camera/image" />
 
-  <rosparam file="$(find jsk_uav_forest_perception)/param/ColorRegionDetection.yaml" command="load" />
+  <rosparam file="$(find jsk_uav_forest_perception)/param/VisionDetection.yaml" command="load" />
 
   <group ns="camera" >
     <!-- nodelet manager -->
     <node type="nodelet" pkg="nodelet" name="$(arg nodelet_name)" args="manager" output="screen" if="$(arg independent_nodelet)"/>
 
     <!-- color region detector -->
-    <node pkg="nodelet" type="nodelet" name="color_region_detection"
-          args="load color_region_detection/ColorRegionDetector $(arg nodelet_name)" output="screen">
+    <node pkg="nodelet" type="nodelet" name="vision_detection"
+          args="load vision_detection/VisionDetector $(arg nodelet_name)" output="screen">
       <param name="image_topic_name" value="$(arg image_name)"/>
-      </node>
+      <param name="camera_info_topic_name" value="/camera/camera_info" />
+      <param name="laser_scan_topic_name" value="/scan_clustered"/>
+      <param name="verbose" value="true"/>
+      <param name="detect_once" value="true"/>
+      <param name="first_detection_depth_thre" value="9.0"/>
+    </node>
 
   </group>
 

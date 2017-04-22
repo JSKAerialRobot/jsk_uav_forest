@@ -1,7 +1,7 @@
 scan_filter_chain:
 - name: tree
-  type: laser_filters/ScanTreeFilter
+  type: laser_filters/LaserClusteringFilter
   params:
-    max_radius: 0.5
+    max_radius: 0.4
     min_points: 3
-
+    verbose: false

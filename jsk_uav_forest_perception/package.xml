@@ -43,7 +43,7 @@
   <run_depend>tf</run_depend>
 
   <export>
-    <nodelet plugin="${prefix}/color_region_detection_nodelets.xml"/>
+    <nodelet plugin="${prefix}/vision_detection_nodelets.xml"/>
     <filters plugin="${prefix}/laser_filters_plugins.xml"/>
   </export>
 </package>

@@ -1,5 +1,5 @@
 camera:
-        color_region_detection:
+        vision_detection:
                 h_min: 150
                 s_min: 80
                 v_min: 100

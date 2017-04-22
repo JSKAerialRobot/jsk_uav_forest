@@ -38,21 +38,23 @@
 #include <sensor_msgs/LaserScan.h>
 #include <angles/angles.h>
 
+using namespace std;
+
 namespace laser_filters{
 
-/** @b ScanTreeFilter is a simple filter that filters shadow points in a laser scan line 
+/** @b LaserClusteringFilter is a simple filter that filters shadow points in a laser scan line 
  */
 
-class ScanTreeFilter : public filters::FilterBase<sensor_msgs::LaserScan>
+class LaserClusteringFilter : public filters::FilterBase<sensor_msgs::LaserScan>
 {
 public:
 
   double max_radius_;          // Filter angle threshold
   int min_points_;
-    
+  bool verbose_;
 
   ////////////////////////////////////////////////////////////////////////////////
-  ScanTreeFilter () 
+  LaserClusteringFilter ()
   {
 
 
@@ -74,11 +76,16 @@ public:
       ROS_INFO("Error: TreeFilter was not given min_points.\n");
       return false;
     }
+    if (!filters::FilterBase<sensor_msgs::LaserScan>::getParam(std::string("verbose"), verbose_))
+    {
+      verbose_ = false;
+    }
+
     return true;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  virtual ~ScanTreeFilter () { }
+  virtual ~LaserClusteringFilter () { }
 
   ////////////////////////////////////////////////////////////////////////////////
   /** \brief 
@@ -95,49 +102,70 @@ public:
     std::vector<std::vector<int> > range_blobs;
     std::vector<int> range_blob;
     for (unsigned int i = 0; i < scan_in.ranges.size (); i++)
-    {
-      scan_out.ranges[i] = -1.0 * fabs(scan_in.ranges[i]); // set all ranges to invalid (*)
-      if ( scan_in.ranges[i] < 0 || std::isnan(scan_in.ranges[i])) {
+      {
+        scan_out.ranges[i] = -1.0 * fabs(scan_in.ranges[i]); // set all ranges to invalid (*)
+        if ( scan_in.ranges[i] < 0 || std::isnan(scan_in.ranges[i])) {
           if ( range_blob.size() > min_points_ ) {
-              range_blobs.push_back(range_blob);
+            range_blobs.push_back(range_blob);
           }
           range_blob.clear();
-      }else{
+        }else{
           range_blob.push_back(i);
+        }
+      }
+    if ( range_blob.size() > min_points_ ) {
+      range_blobs.push_back(range_blob);
+    }
+
+    /* for each blob calculate center and radius */
+    for (unsigned int i = 0; i < range_blobs.size(); i++) {
+      int size = range_blobs[i].size();
+#if 0 // previous radisu calculation, has some problem
+      /* check center of blob */
+      double center_x = 0, center_y = 0;
+      for (unsigned int j = 0; j < size; j++) {
+        double x = scan_in.ranges[range_blobs[i][j]];
+        double y = scan_in.ranges[range_blobs[i][j]] * scan_in.angle_increment;
+        center_x += x;
+        center_y += y;
+      }
+      center_x /= size;
+      center_y /= size;
+
+      /* check range of blob */
+      double radius = 0;
+      for (unsigned int j = 0; j < size; j++) {
+        double x = scan_in.ranges[range_blobs[i][j]];
+        double y = scan_in.ranges[range_blobs[i][j]] * scan_in.angle_increment;
+        if ( radius < fabs(center_x - x) ) radius = fabs(center_x - x) ;
+        if ( radius < fabs(center_y - y) ) radius = fabs(center_y - y) ;
+      }
+#else // very rough proximation
+      float angle = (size - 1) * scan_in.angle_increment;
+      float length = 0;
+      float radius = 0;
+      for (unsigned int j = 0; j < size - 1; j++) {
+        float x_curr = scan_in.ranges[range_blobs[i][j]];
+        float x_next = scan_in.ranges[range_blobs[i][j + 1]]; // cos(scan_in.angle_increment) = 1
+        float y_next = scan_in.ranges[range_blobs[i][j + 1]] * scan_in.angle_increment; // sin(scan_in.angle_increment) = scan_in.angle_increment
+        length += sqrt((x_curr - x_next) * (x_curr - x_next) + y_next * y_next);
+      }
+      radius = length / (M_PI - angle);
+      if(verbose_)
+        {
+          cout << i << ": direction: " << (range_blobs[i][0] + size/2) * scan_in.angle_increment + scan_in.angle_min
+               << "[rad]; distance: " << scan_in.ranges[range_blobs[i][0] + size/2]
+               << "[m]; size: " << size << "; radius: "
+               << radius << "[m]; length: " << length << "[m]; angle: " << angle << "[rad]" << endl;
+        }
+#endif
+
+      if ( radius < max_radius_ ) {
+        indices_to_publish.insert(range_blobs[i][0] + size/2);
       }
     }
-    if ( range_blob.size() > min_points_ ) {
-        range_blobs.push_back(range_blob);
-    }
-    // for each blob calculate center and radius
-    for (unsigned int i = 0; i < range_blobs.size(); i++) {
-        int size = range_blobs[i].size();
-        // check center of blob
-        double center_x = 0, center_y = 0;
-        for (unsigned int j = 0; j < size; j++) {
-            double x = scan_in.ranges[range_blobs[i][j]];
-            double y = scan_in.ranges[range_blobs[i][j]] * scan_in.angle_increment;
-            center_x += x;
-            center_y += y;
-        }
-        center_x /= size;
-        center_y /= size;
 
-        // check range of blob
-        double radius = 0;
-        for (unsigned int j = 0; j < size; j++) {
-            double x = scan_in.ranges[range_blobs[i][j]];
-            double y = scan_in.ranges[range_blobs[i][j]] * scan_in.angle_increment;
-            if ( radius < fabs(center_x - x) ) radius = fabs(center_x - x) ;
-            if ( radius < fabs(center_y - y) ) radius = fabs(center_y - y) ;
-        }
 
-        ROS_DEBUG_STREAM("blob center " << center_x << " " << center_y << ", radius " << radius << ", num of ponits " << size);
-        if ( radius < max_radius_ ) {
-            indices_to_publish.insert(range_blobs[i][0] + size/2);
-        }
-    }
-    ROS_DEBUG("ScanTreeFilter  %d Points from scan with min radius: %.2f, num of pints: %d", (int)indices_to_publish.size(), max_radius_, min_points_);
     for ( std::set<int>::iterator it = indices_to_publish.begin(); it != indices_to_publish.end(); ++it)
       {
 	scan_out.ranges[*it] = fabs(scan_in.ranges[*it]); // valid only the ranges that passwd the test (*)
@@ -150,4 +178,4 @@ public:
 } ;
 }
 
-#endif //LASER_SCAN_TREE_FILTER_H
+#endif //LASER_CUSTERING_FILTER_H

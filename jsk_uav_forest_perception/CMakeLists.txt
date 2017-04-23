@@ -44,7 +44,8 @@ add_library(laser_clustering_filter SHARED src/laser_clustering_filter.cpp)
 target_link_libraries(laser_clustering_filter ${catkin_LIBRARIES})
 
 add_library(vision_detection_pluginlib
-  src/vision_detector/independent_hsv_filter.cpp)
+  src/vision_detector/independent_hsv_filter.cpp
+  src/vision_detector/conditional_hsv_filter.cpp)
 target_link_libraries(vision_detection_pluginlib ${catkin_LIBRARIES})
 add_dependencies(vision_detection_pluginlib ${PROJECT_NAME}_gencfg)
 

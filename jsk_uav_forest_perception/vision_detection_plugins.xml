@@ -4,4 +4,10 @@
       Independent HSV filter.
     </description>
   </class>
+  <class name="vision_detection/ConditionalHsvFilter" type="vision_detection::ConditionalHsvFilter" base_class_type="vision_detection::DetectorBase">
+    <description>
+      Conditional HSV filter.
+    </description>
+  </class>
+
 </library>

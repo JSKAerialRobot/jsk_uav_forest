@@ -208,12 +208,36 @@ namespace vision_detection
       sub_scan_.unsubscribe(); //stop
     }
 
-    void laserClustering(sensor_msgs::LaserScan scan_in, vector<int>& cluster_index)
+    void laserClustering(sensor_msgs::LaserScan scan_in, vector<int>& cluster_index, cv::Mat src_image)
     {
       cluster_index.resize(0);
       /* extract the cluster */
       for (size_t i = 0; i < scan_in.ranges.size(); i++)
-        if(scan_in.ranges[i] > 0) cluster_index.push_back(i);
+        {
+          if(scan_in.ranges[i] > 0)
+            {
+              cluster_index.push_back(i);
+
+              float laser_direction = i * scan_in.angle_increment + scan_in.angle_min;
+              cv::circle(src_image, cv::Point(camera_cx_ - camera_fx_ * tan(laser_direction) , camera_cy_), 3, cv::Scalar(255, 0, 0), 5);
+            }
+        }
+    }
+
+    bool commonFiltering(float laser_direction, float fov, float laser_distance)
+    {
+      if(fabs(laser_direction) > fov)
+        {
+          if(verbose_) cout << "eliminate: laser_direction:" << laser_direction << "; " << "fov: " << fov << endl;
+          return false;
+        }
+
+      if(laser_distance > first_detection_depth_thre_)
+        {
+          if(verbose_) cout << "eliminate: depth: " << laser_distance << endl;
+          return false;
+        }
+      return true;
     }
 
     virtual bool filter(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::LaserScanConstPtr& scan_msg, int& target_tree_index) = 0;

@@ -54,10 +54,10 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17);
   nhp_.param("verbose", verbose_, false);
 
-  sub_sync_scan_.subscribe(nhp_, laser_scan_topic_name_, 1);
-  sub_sync_vision_detection_.subscribe(nhp_, vision_detection_topic_name_, 1);
+  sub_sync_scan_.subscribe(nhp_, laser_scan_topic_name_, 20, ros::TransportHints().tcpNoDelay());
+  sub_sync_vision_detection_.subscribe(nhp_, vision_detection_topic_name_, 10, ros::TransportHints().tcpNoDelay());
 
-  sync_ = boost::shared_ptr<SyncPolicy >(new SyncPolicy(sub_sync_scan_, sub_sync_vision_detection_, 10));
+  sync_ = boost::shared_ptr<SyncPolicy >(new SyncPolicy(sub_sync_scan_, sub_sync_vision_detection_, 100));
   sync_->registerCallback(&TreeTracking::visionDetectionCallback, this);
 
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);

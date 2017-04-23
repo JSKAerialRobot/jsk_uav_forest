@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Willow Garage, Inc.
+ * Copyright (c) 2017, JSK.
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,11 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "jsk_uav_forest_perception/laser_scan_filters.h"
+#include "jsk_uav_forest_perception/laser_clustering_filter.h"
 #include "sensor_msgs/LaserScan.h"
 #include "filters/filter_base.h"
 
 #include "pluginlib/class_list_macros.h"
 
 
-PLUGINLIB_DECLARE_CLASS(laser_filters, ScanTreeFilter, laser_filters::ScanTreeFilter, filters::FilterBase<sensor_msgs::LaserScan>)
+PLUGINLIB_DECLARE_CLASS(laser_filters, LaserClusteringFilter, laser_filters::LaserClusteringFilter, filters::FilterBase<sensor_msgs::LaserScan>)

@@ -2,7 +2,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2016, JSK Lab
+ *  Copyright (c) 2017, JSK Lab
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -33,65 +33,17 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
+#include "jsk_uav_forest_perception/tree_tracking.h"
 
-#ifndef COLOR_REGION_DETECTOR_H_
-#define COLOR_REGION_DETECTOR_H_
-
-/* ros */
-#include <ros/ros.h>
-#include <nodelet/nodelet.h>
-
-/* cfg */
-#include <dynamic_reconfigure/server.h>
-#include <jsk_uav_forest_perception/ColorRegionDetectorConfig.h>
-
-/* ros msg */
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/CameraInfo.h>
-#include <geometry_msgs/PointStamped.h>
-
-/* cv */
-#include <opencv2/opencv.hpp>
-#include <sensor_msgs/image_encodings.h>
-#include <cv_bridge/cv_bridge.h>
-
-/* standard */
-#include <iostream>
-#include <vector>
-
-namespace color_region_detection
+int main (int argc, char **argv)
 {
-  class ColorRegionDetector: public nodelet::Nodelet
-  {
-  public:
-    ColorRegionDetector(){}
-    ~ColorRegionDetector();
-    typedef jsk_uav_forest_perception::ColorRegionDetectorConfig Config;
-
-  private:
-    ros::NodeHandle pnh_;
-    ros::Subscriber sub_camera_image_;
-    ros::Subscriber sub_camera_info_;
-    ros::Publisher pub_target_image_;
-    ros::Publisher pub_target_image_center_;
-    boost::shared_ptr<dynamic_reconfigure::Server<Config> > srv_;
-
-    std::string image_topic_name_;
-    std::string out_image_topic_name_;
-    std::string camera_info_topic_name_;
-
-    int contour_color_r_, contour_color_g_, contour_color_b_;
-    cv::Scalar contour_color_;
-
-    int hsv_lower_bound_[3];
-    int hsv_upper_bound_[3];
-    bool camera_info_update_;
-    double camera_fx_, camera_fy_;
-    void configCallback(Config &new_config, uint32_t level);
-    virtual void onInit();
-    void cameraDataCallback(const sensor_msgs::ImageConstPtr& image_msg);
-    void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& camera_info);
-  };
+  ros::init (argc, argv, "tree_detector");
+  ros::NodeHandle nh;
+  ros::NodeHandle nh_private("~");
+  TreeTracking*  treeTrackingNode = new TreeTracking(nh, nh_private);
+  ros::spin ();
+  delete treeTrackingNode;
+  return 0;
 }
 
-#endif
+

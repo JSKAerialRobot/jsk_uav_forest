@@ -33,17 +33,33 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#include "jsk_uav_forest_perception/tree_detector.h"
+/* base class */
+#include <jsk_uav_forest_perception/vision_detector_base_plugin.h>
 
-int main (int argc, char **argv)
+using namespace std;
+
+namespace vision_detection
 {
-  ros::init (argc, argv, "tree_detector");
-  ros::NodeHandle nh;
-  ros::NodeHandle nh_private("~");
-  TreeDetector*  treeDetectorNode = new TreeDetector(nh, nh_private);
-  ros::spin ();
-  delete treeDetectorNode;
-  return 0;
-}
+  typedef jsk_uav_forest_perception::HsvFilterConfig Config;
+  class IndependentHsvFilter :public vision_detection::DetectorBase
+  {
+  public:
+    virtual void initialize(ros::NodeHandle nh, ros::NodeHandle pnh);
+  protected:
+    boost::shared_ptr<dynamic_reconfigure::Server<Config> > srv_;
 
+    int hsv_lower_bound_[3];
+    int hsv_upper_bound_[3];
+    int contour_color_r_, contour_color_g_, contour_color_b_;
+    cv::Scalar contour_color_;
+    double color_region_tree_clustering_angle_diff_thre_;
+
+    void configCallback(Config &new_config, uint32_t level);
+
+    void hsvFilter(cv::Mat src_image, string encoding, cv::Mat& hue_image_mask);
+
+    virtual bool filter(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::LaserScanConstPtr& scan_msg, int& target_tree_index);
+  };
+
+};
 

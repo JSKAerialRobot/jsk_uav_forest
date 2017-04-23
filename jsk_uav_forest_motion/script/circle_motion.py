@@ -71,7 +71,7 @@ class CircleMotion:
         self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
-        self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "perception_start")
+        self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
         self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
 
         self.control_rate_ = rospy.get_param("~control_rate", 20)

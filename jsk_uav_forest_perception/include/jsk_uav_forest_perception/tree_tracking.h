@@ -33,17 +33,19 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#ifndef TREE_DETECTOR_H_
-#define TREE_DETECTOR_H_
+#ifndef TREE_TRACKING_H_
+#define TREE_TRACKING_H_
 
 /* ros */
 #include <ros/ros.h>
+
+/* message filter */
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 
 /* ros msg/srv */
 #include <sensor_msgs/CameraInfo.h>
-#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Bool.h>
@@ -51,48 +53,37 @@
 
 using namespace std;
 
-class TreeDetector
+class TreeTracking
 {
 public:
-  TreeDetector(ros::NodeHandle nh, ros::NodeHandle nhp);
-  ~TreeDetector(){}
+  TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp);
+  ~TreeTracking(){}
 
+  typedef message_filters::TimeSynchronizer<sensor_msgs::LaserScan, geometry_msgs::Vector3Stamped> SyncPolicy;
 private:
   ros::NodeHandle nh_, nhp_;
+
+  boost::shared_ptr<SyncPolicy> sync_;
+  message_filters::Subscriber<geometry_msgs::Vector3Stamped> sub_sync_vision_detection_;
+  message_filters::Subscriber<sensor_msgs::LaserScan> sub_sync_scan_;
+
   ros::Subscriber sub_uav_odom_;
-  ros::Subscriber sub_color_region_center_;
-  ros::Subscriber sub_camera_info_;
-  ros::Subscriber sub_clustered_laser_scan_;
   ros::Subscriber sub_laser_scan_;
-  ros::Subscriber sub_perception_start_;
+
   ros::Publisher pub_tree_location_;
   ros::Publisher pub_tree_global_location_;
-  ros::Publisher pub_tree_cluster_;
 
   string uav_odom_topic_name_;
-  string color_region_center_topic_name_;
-  string camera_info_topic_name_;
   string laser_scan_topic_name_;
+  string vision_detection_topic_name_;
   string tree_location_topic_name_;
   string tree_global_location_topic_name_;
   string tree_cluster_topic_name_;
-  string perception_start_topic_name_;
-  bool tree_cluster_pub_;
-  double color_region_tree_clustering_angle_diff_thre_;
-  double first_detection_depth_thre_;
+
   double target_tree_drift_thre_;
   double uav_tilt_thre_;
   bool verbose_;
 
-  bool camera_info_update_;
-  bool color_region_update_;
-  bool detector_from_image_;
-
-  double camera_fx_, camera_fy_, camera_cx_, camera_cy_;
-  double color_region_direction_;
-  double clurstering_max_radius_;
-  int clurstering_min_points_;
-  int target_tree_index_;
   double target_theta_, target_dist_;
   tf::Vector3 uav_odom_;
   float uav_roll_, uav_pitch_, uav_yaw_;
@@ -101,14 +92,11 @@ private:
   void subscribe();
   void unsubscribe();
 
-  void treeClustering(const sensor_msgs::LaserScan& scan_in, vector<int>& cluster_index);
-  void circleFitting();
-
+  void visionDetectionCallback(const sensor_msgs::LaserScanConstPtr& laser_msg, const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg);
   void laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_msg);
-  void colorRegionCallback(const geometry_msgs::PointStampedConstPtr& color_region_center_msg);
-  void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& camera_info);
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
-  void perceptionStartCallback(const std_msgs::BoolConstPtr& msg);
+
+
 };
 
 #endif

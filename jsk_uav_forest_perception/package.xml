@@ -43,7 +43,7 @@
   <run_depend>tf</run_depend>
 
   <export>
-    <nodelet plugin="${prefix}/color_region_detection_nodelets.xml"/>
+    <jsk_uav_forest_perception plugin="${prefix}/vision_detection_plugins.xml"/>
     <filters plugin="${prefix}/laser_filters_plugins.xml"/>
   </export>
 </package>

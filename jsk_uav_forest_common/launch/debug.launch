@@ -2,12 +2,20 @@
 <launch>
   <arg name="use_dji" default="True" />
   <arg name="headless" default="False" />
-
+  <arg name="no_odom" default="False" />
+  
   ############## Viewer ###############
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find jsk_uav_forest_common)/launch/log_viewer.rviz" unless="$(arg headless)" respawn="true"/>
 
   ############## Odometry ###############
-  <node pkg="jsk_uav_forest_common" type="odom_generator.py" name="odom_gen" output="screen" />
+  <node pkg="jsk_uav_forest_common" type="odom_generator.py" name="odom_gen" output="screen" if="$(arg no_odom)">
+    <param name="use_lidar" value="True" />
+    <param name="use_guidance_vel" value="True" />
+    <param name="lidar_tc" value="0.5" />
+    <param name="lidar_noise_cut_thresh" value="0.5" />
+    <param name="guidance_vel_weight" value="0.9" />
+  </node>
+
   <node pkg="jsk_uav_forest_common" type="tf_broadcaster.py" name="tf_broadcaster" output="screen" >
     <param name="uav_odom_topic_name" value="/modified_odom" if="$(arg use_dji)" />
     <param name="uav_odom_topic_name" value="/ground_truth/state" unless="$(arg use_dji)" />
@@ -17,7 +25,6 @@
   ######### Perception Node #########
     <!-- vision base -->
   <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
-    <arg name="independent_nodelet" value="true" />
     <arg name="image_name" value="/camera/image_rect"/>
   </include>
 
@@ -26,11 +33,8 @@
   </include>
 
   <!-- tree detector -->
-  <node pkg="jsk_uav_forest_perception" type="tree_detector_node" output="screen" name="tree_detector_node">
-    <param name="color_region_center_topic_name" value="/object_image_center" />
-    <param name="camera_info_topic_name" value="/camera/camera_info" />
-    <param name="laser_scan_topic_name" value="/shadow_filtered" />
-    <param name="clurstering_max_radius" value="0.4" />
+  <node pkg="jsk_uav_forest_perception" type="tree_tracking_node" output="screen" name="tree_tracking_node">
+     <param name="laser_scan_topic_name" value="/scan_clustered" />
     <param name="uav_odom_topic_name" value="/modified_odom"/>
     <param name="verbose" value="false" />
   </node>

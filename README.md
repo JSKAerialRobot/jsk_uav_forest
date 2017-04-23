@@ -42,9 +42,10 @@ $ rosservice call /task_start true
 
 ## how to activate plannar
 
+- arg plannar means whether to add motion planning, arg collision means whether to add obstacle which will cause collision into simulation.
 - When adding obstacles, remember not to block the view from drone to red tree:
 ```
-$ roslaunch jsk_uav_forest_simulation forest_simulation.launch plannar:=true
+$ roslaunch jsk_uav_forest_simulation forest_simulation.launch plannar:=true collision:=true
 ```
 
 

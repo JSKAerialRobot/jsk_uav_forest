@@ -143,16 +143,13 @@ namespace vision_detection
     contour_center.point.y = contour_moments.m01 / contour_moments.m00;
     pub_target_image_center_.publish(contour_center);
     /* draw */
-    cv::circle(src_image, cv::Point(contour_center.point.x, contour_center.point.y), 3, cv::Scalar(255, 0, 0), 5);
+    cv::circle(src_image, cv::Point(contour_center.point.x, contour_center.point.y), 3, cv::Scalar(0, 0, 255), 5);
     cv::drawContours(src_image, contours, max_contour, contour_color_, 3);
 
-    /* publish */
-    pub_target_image_.publish(cv_bridge::CvImage(image_msg->header,
-                                                 image_msg->encoding,
-                                                 src_image).toImageMsg());
-
-
     /* check whether the contour is satisfied the condistion */
+    /* laser preparation */
+    vector<int> cluster_index;
+    laserClustering(*scan_msg, cluster_index, src_image);
 
     /* we calculate the angle between the x axis(forward) and the line to the color region */
     float color_region_direction = atan2(-contour_center.point.x + camera_cx_, camera_fx_);
@@ -162,28 +159,11 @@ namespace vision_detection
     float fov = atan2(camera_cx_, camera_fx_); //proximate the width of image with camera_cx_
     float min_diff = 1e6;
 
-    vector<int> cluster_index;
-    laserClustering(*scan_msg, cluster_index, src_image);
-
     for ( vector<int>::iterator it = cluster_index.begin(); it != cluster_index.end(); ++it)
       {
         float diff = 0;
         float laser_direction = *it * scan_msg->angle_increment + scan_msg->angle_min;
 
-        /*
-          if(fabs(laser_direction) > fov)
-          {
-
-          if(verbose_) cout << "eliminate: laser_direction:" << laser_direction << "; " << "fov: " << fov << endl;
-          continue;
-          }
-
-          if(scan_msg->ranges[*it] > first_detection_depth_thre_)
-          {
-          if(verbose_) cout << "eliminate: depth: " << scan_msg->ranges[*it] << endl;
-          continue;
-          }
-        */
         if(!commonFiltering(laser_direction, fov, scan_msg->ranges[*it])) continue;
 
         diff = fabs(laser_direction - color_region_direction);
@@ -209,6 +189,14 @@ namespace vision_detection
         ROS_INFO_THROTTLE(1,"closest tree is far from the color region, can not find the target tree, diff: %f", min_diff);
         return false;
       }
+
+    /* draw */
+    cv::circle(src_image, cv::Point(camera_cx_ + camera_offset_x_ - camera_fx_ * tan(target_tree_index * scan_msg->angle_increment + scan_msg->angle_min) , camera_cy_), 3, cv::Scalar(255, 0, 0), 20);
+
+    /* publish */
+    pub_target_image_.publish(cv_bridge::CvImage(image_msg->header,
+                                                 image_msg->encoding,
+                                                 src_image).toImageMsg());
 
     /* find the target tree */
     ROS_WARN("independent hsv filter based vision detectoion: find the target tree, angle_diff: %f", min_diff);

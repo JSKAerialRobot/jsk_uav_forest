@@ -101,6 +101,7 @@ namespace vision_detection
       pnh_.param("detect_once", detect_once_, true);
       pnh_.param("verbose", verbose_, true);
 
+      pnh_.param("camera_offset_x", camera_offset_x_, 0.0);
       pnh_.param("first_detection_depth_thre", first_detection_depth_thre_, 9.0); // [m]
 
       /* ros pub and sub */
@@ -145,6 +146,7 @@ namespace vision_detection
     bool verbose_;
 
     double first_detection_depth_thre_;
+    double camera_offset_x_;
 
     /* base var */
     float scan_angle_increment_, scan_angle_min_;
@@ -219,7 +221,7 @@ namespace vision_detection
               cluster_index.push_back(i);
 
               float laser_direction = i * scan_in.angle_increment + scan_in.angle_min;
-              cv::circle(src_image, cv::Point(camera_cx_ - camera_fx_ * tan(laser_direction) , camera_cy_), 3, cv::Scalar(255, 0, 0), 5);
+              cv::circle(src_image, cv::Point(camera_cx_ + camera_offset_x_ - camera_fx_ * tan(laser_direction) , camera_cy_), 3, cv::Scalar(255, 0, 0), 5);
             }
         }
     }

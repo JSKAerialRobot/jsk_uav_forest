@@ -79,8 +79,8 @@ namespace vision_detection
 
         float y1 = laser_distance * sin(laser_direction) + tree_diameter_ / 2  * sin(laser_direction - M_PI/2);
         float y2 = laser_distance * sin(laser_direction) + tree_diameter_ / 2  * sin(laser_direction + M_PI/2);
-        float x_l = camera_cx_ - camera_fx_ * y2 / x2;
-        float x_r = camera_cx_ - camera_fx_ * y1 / x1;
+        float x_l = camera_cx_ + camera_offset_x_ - camera_fx_ * y2 / x2;
+        float x_r = camera_cx_ + camera_offset_x_ - camera_fx_ * y1 / x1;
         if(x_l < 0) x_l = 0;
         if(x_r > src_image.cols) x_r = src_image.cols;
         if(verbose_)

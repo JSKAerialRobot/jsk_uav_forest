@@ -12,6 +12,8 @@
     <param name="laser_scan_topic_name" value="/scan_clustered"/>
     <param name="verbose" value="true"/>
     <param name="detect_once" value="true"/>
+    <param name="camera_offset_x" value="0.0" />
+    <param name="first_detection_depth_thre" value="9.0" /> <!-- should be 9[m] -->
     <param name="plugin_name" value="vision_detection/$(arg plugin_name)" />
     <rosparam file="$(find jsk_uav_forest_perception)/param/$(arg plugin_name).yaml"/>
   </node>

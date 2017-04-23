@@ -5,6 +5,9 @@
 This is the repository for the uav challenge in forest:
 [森のドローン・ロボット競技会](http://www.lsse.kyutech.ac.jp/~sociorobo/ja/forestdrone17)
 
+![](jsk_uav_forest_common/images/demo.gif)
+
+
 ## how to compile
 
 ```

@@ -15,9 +15,11 @@
 
   <!-- tree detector -->
   <node pkg="jsk_uav_forest_perception" type="tree_tracking_node" output="screen" name="tree_tracking_node">
-    <param name="laser_scan_topic_name" value="/scan_clustered" />
+    <param name="clustered_scan_topic_name" value="/scan_clustered" />
+    <param name="raw_scan_topic_name" value="/shadow_filtered" />
     <param name="uav_odom_topic_name" value="/ground_truth/state" if="$(arg simulation)"/>
     <param name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" unless="$(arg simulation)"/>
+    <param name="only_target" value="true" />
     <param name="verbose" value="false" />
     </node>
 </launch>

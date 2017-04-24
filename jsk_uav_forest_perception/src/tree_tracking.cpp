@@ -37,50 +37,64 @@
 
 TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nh_(nh), nhp_(nhp),
-  target_theta_(0),
-  target_dist_(0),
-  uav_odom_(0,0,0),
-  target_tree_global_location_(0,0,0),
+  tree_db_(nh, nhp),
+  search_center_(0,0,0), uav_odom_(0,0,0),
   uav_yaw_(0), uav_roll_(0), uav_pitch_(0)
 {
   /* ros param */
   nhp_.param("uav_odom_topic_name", uav_odom_topic_name_, string("uav_odom"));
   nhp_.param("vision_detection_topic_name", vision_detection_topic_name_, string("/object_direction"));
-  nhp_.param("laser_scan_topic_name", laser_scan_topic_name_, string("scan"));
+  nhp_.param("clustered_scan_topic_name", clustered_scan_topic_name_, string("clustered_scan"));
+  nhp_.param("raw_scan_topic_name", raw_scan_topic_name_, string("raw_scan"));
   nhp_.param("tree_location_topic_name", tree_location_topic_name_, string("tree_location"));
   nhp_.param("tree_global_location_topic_name", tree_global_location_topic_name_, string("tree_global_location"));
+  nhp_.param("stop_detection_topic_name", stop_detection_topic_name_, string("/detection_start"));
 
-  nhp_.param("target_tree_drift_thre", target_tree_drift_thre_, 0.5);
-  nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17);
+  nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17); //[rad] = 10[deg]
+  nhp_.param("search_radius", search_radius_, 10.0); // 12[m]
+  nhp_.param("only_target", only_target_, false);
   nhp_.param("verbose", verbose_, false);
 
-  sub_sync_scan_.subscribe(nhp_, laser_scan_topic_name_, 20, ros::TransportHints().tcpNoDelay());
-  sub_sync_vision_detection_.subscribe(nhp_, vision_detection_topic_name_, 10, ros::TransportHints().tcpNoDelay());
-
-  sync_ = boost::shared_ptr<SyncPolicy >(new SyncPolicy(sub_sync_scan_, sub_sync_vision_detection_, 100));
-  sync_->registerCallback(&TreeTracking::visionDetectionCallback, this);
-
+  sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
 
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
+  pub_stop_vision_detection_ = nh_.advertise<std_msgs::Bool>(stop_detection_topic_name_, 1);
 }
 
-
-void TreeTracking::visionDetectionCallback(const sensor_msgs::LaserScanConstPtr& laser_msg, const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg)
+void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg)
 {
-  ROS_INFO("receive  vision detection result, time diff: %f", laser_msg->header.stamp.toSec() - vision_detection_msg->header.stamp.toSec());
+  ROS_WARN("tree tracking: start tracking");
+  /* stop the vision detection */
+  std_msgs::Bool stop_msg;
+  stop_msg.data = false;
+  pub_stop_vision_detection_.publish(stop_msg);
 
-  //ROS_WARN("tree tracking: start tracking, angle_diff: %f, vision index: %d, laser index: %d, vision dist: %f, laser dist: %f", min_diff, (int)vision_detection_msg->vector.x, target_tree_index, vision_detection_msg->vector.z, laser_msg->ranges[target_tree_index]);
+  /*
+    ROS_WARN("tree tracking: start tracking, angle_diff: %f, vision index: %d, laser index: %d, vision dist: %f, laser dist: %f", min_diff, (int)vision_detection_msg->vector.x, target_tree_index, vision_detection_msg->vector.z, laser_msg->ranges[target_tree_index]);
+  */
+
   tf::Matrix3x3 rotation;
   rotation.setRPY(0, 0, vision_detection_msg->vector.y + uav_yaw_);
-  target_tree_global_location_ = uav_odom_ + rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
+  tf::Vector3 target_tree_global_location = uav_odom_ + rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
 
-  /* stop the synchronized subscribe and start laesr-only subscribe */
-  sub_laser_scan_ = nh_.subscribe(laser_scan_topic_name_, 1, &TreeTracking::laserScanCallback, this);
+  /* start laesr-only subscribe */
+  sub_sync_clustered_scan_.subscribe(nhp_, clustered_scan_topic_name_, 10, ros::TransportHints().tcpNoDelay());
+  sub_sync_raw_scan_.subscribe(nhp_, raw_scan_topic_name_, 10, ros::TransportHints().tcpNoDelay());
+  sync_ = boost::shared_ptr<SyncPolicy >(new SyncPolicy(sub_sync_raw_scan_, sub_sync_clustered_scan_, 100));
+  sync_->registerCallback(&TreeTracking::laserScanCallback, this);
 
-  sub_sync_vision_detection_.unsubscribe(); //stop
-  sub_sync_scan_.unsubscribe(); //stop
+  /* add target tree to the tree data base */
+  TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(target_tree_global_location));
+  tree_db_.add(new_tree);
+  target_tree_ = new_tree;
+
+  /* set the search center as the first target tree(with color marker) pos */
+  search_center_ = target_tree_global_location;
+
+  sub_vision_detection_.shutdown(); //stop
+
 }
 
 
@@ -99,87 +113,66 @@ void TreeTracking::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
   uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
 }
 
-/* 1. Do the tree clustering based on the simple radius checking algorithm */
-/* 2. Find the most closed tree to previos target tree index, update the target tree index */
-void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_msg)
+void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& raw_scan_msg, const sensor_msgs::LaserScanConstPtr& clustered_scan_msg)
 {
   if(verbose_) ROS_INFO("receive new laser scan");
 
-  /* tree clustering */
-  vector<int> cluster_index;
   /* extract the cluster */
-  for (size_t i = 0; i < laser_msg->ranges.size(); i++)
-    if(laser_msg->ranges[i] > 0) cluster_index.push_back(i);
+  vector<int> cluster_index;
+  for (size_t i = 0; i < clustered_scan_msg->ranges.size(); i++)
+      if(clustered_scan_msg->ranges[i] > 0) cluster_index.push_back(i);
 
   /* find the tree most close to the previous target tree */
-  float min_diff = 1e6;
   int target_tree_index = 0;
-  tf::Vector3 target_tree_global_location;
-
+  bool target_update = false;
   for ( vector<int>::iterator it = cluster_index.begin(); it != cluster_index.end(); ++it)
     {
-      float diff = 0;
+      /* we do not update trees pos if there is big tilt */
+      if(fabs(uav_pitch_) > uav_tilt_thre_)
+        {
+          ROS_WARN("Too much tilt: %f", uav_pitch_);
+          break;
+        }
+
       tf::Vector3 tree_global_location;
 
       /* calculate the distance  */
       tf::Matrix3x3 rotation;
-      rotation.setRPY(0, 0, *it * laser_msg->angle_increment + laser_msg->angle_min + uav_yaw_);
-      tree_global_location = uav_odom_ + rotation * tf::Vector3(laser_msg->ranges[*it], 0, 0);
-      diff = (target_tree_global_location_ - tree_global_location).length();
+      rotation.setRPY(0, 0, *it * clustered_scan_msg->angle_increment + clustered_scan_msg->angle_min + uav_yaw_);
+      tree_global_location = uav_odom_ + rotation * tf::Vector3(clustered_scan_msg->ranges[*it], 0, 0);
 
-      if(verbose_)
+      /* omit, if the tree is not within the search area */
+      if((search_center_ - tree_global_location).length() > search_radius_)
         {
-          cout << "tree index: " << *it << endl;
-          cout << "tree angle: " << *it * laser_msg->angle_increment + laser_msg->angle_min << endl;
-          cout << "diff: " << diff << endl;
+          if(verbose_)
+            cout << "tree [" << tree_global_location.x() << ", " << tree_global_location.y() << "] is to far from the search center [" << search_center_.x() << ", " << search_center_.y() << "]" << endl;
+          continue;
         }
 
-      if(diff < min_diff)
-        {
-          min_diff = diff;
-          target_tree_index = *it;
-          target_tree_global_location = tree_global_location;
-        }
+      /* add tree to the database */
+      if(verbose_) cout << "Scan input tree No." << distance(cluster_index.begin(), it) << ": start update" << endl;
+      target_update += tree_db_.update(tree_global_location, only_target_);
     }
 
-  /* update */
-  if(fabs(uav_pitch_) < uav_tilt_thre_)
-    {
-      float drift = (target_tree_global_location_ - target_tree_global_location).length();
-      if(verbose_) cout << "drift: " << drift << endl;
-      if(drift < target_tree_drift_thre_)
-        {
-          target_tree_global_location_ = target_tree_global_location;
-        }
-      else
-        {
-          ROS_WARN("lost the target tree, drift: %f, the nearest target location: [%f, %f], prev target location: [%f, %f]", drift, target_tree_global_location.x(), target_tree_global_location.y(), target_tree_global_location_.x(), target_tree_global_location_.y());
-        }
-    }
-  else
-    {
-      ROS_WARN("Too much tilt: %f", uav_pitch_);
-    }
+  tf::Vector3 target_tree_global_location = target_tree_->getPos();
+  tf::Matrix3x3 rotation;
+  rotation.setRPY(0, 0, -uav_yaw_);
+  tf::Vector3 target_tree_local_location = rotation * (target_tree_global_location - uav_odom_);
+  if(!target_update && only_target_)
+    ROS_WARN("lost the target tree: [%f, %f]", target_tree_global_location.x(), target_tree_global_location.y());
 
-
-  if(verbose_)
-    ROS_INFO("target_tree_global_location_: [%f, %f]", target_tree_global_location_.x(), target_tree_global_location_.y());
+  if(verbose_) ROS_INFO("target_tree_global_location: [%f, %f]", target_tree_global_location.x(), target_tree_global_location.y());
 
   /* publish the location of the target tree */
   geometry_msgs::PointStamped target_msg;
-  target_msg.header = laser_msg->header;
-  tf::Matrix3x3 rotation;
-  rotation.setRPY(0, 0, -uav_yaw_);
-  tf::Vector3 target_tree_local_location = rotation * (target_tree_global_location_ - uav_odom_);
+  target_msg.header = clustered_scan_msg->header;
   target_msg.point.x = target_tree_local_location.x();
   target_msg.point.y = target_tree_local_location.y();
   pub_tree_location_.publish(target_msg);
   geometry_msgs::PointStamped target_global_msg;
-  target_global_msg.header = laser_msg->header;
-  target_global_msg.point.x = target_tree_global_location_.x();
-  target_global_msg.point.y = target_tree_global_location_.y();
+  target_global_msg.header = clustered_scan_msg->header;
+  target_global_msg.point.x = target_tree_global_location.x();
+  target_global_msg.point.y = target_tree_global_location.y();
   pub_tree_global_location_.publish(target_global_msg);
-
-  /* TODO: we need record method for multiple trees using the odom of UAV */
 }
 

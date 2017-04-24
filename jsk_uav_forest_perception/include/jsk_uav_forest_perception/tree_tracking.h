@@ -51,49 +51,60 @@
 #include <std_msgs/Bool.h>
 #include <tf/transform_broadcaster.h>
 
+/* tree labeling */
+#include <jsk_uav_forest_perception/tree_database.h>
+
 using namespace std;
 
 class TreeTracking
 {
+  typedef message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan> SyncPolicy;
+
 public:
   TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp);
   ~TreeTracking(){}
 
-  typedef message_filters::TimeSynchronizer<sensor_msgs::LaserScan, geometry_msgs::Vector3Stamped> SyncPolicy;
 private:
   ros::NodeHandle nh_, nhp_;
 
   boost::shared_ptr<SyncPolicy> sync_;
-  message_filters::Subscriber<geometry_msgs::Vector3Stamped> sub_sync_vision_detection_;
-  message_filters::Subscriber<sensor_msgs::LaserScan> sub_sync_scan_;
+  message_filters::Subscriber<sensor_msgs::LaserScan> sub_sync_raw_scan_;
+  message_filters::Subscriber<sensor_msgs::LaserScan> sub_sync_clustered_scan_;
 
+  ros::Subscriber sub_vision_detection_;
   ros::Subscriber sub_uav_odom_;
   ros::Subscriber sub_laser_scan_;
 
+  ros::Publisher pub_stop_vision_detection_;
   ros::Publisher pub_tree_location_;
   ros::Publisher pub_tree_global_location_;
 
   string uav_odom_topic_name_;
-  string laser_scan_topic_name_;
+  string raw_scan_topic_name_;
+  string clustered_scan_topic_name_;
   string vision_detection_topic_name_;
   string tree_location_topic_name_;
   string tree_global_location_topic_name_;
   string tree_cluster_topic_name_;
+  string stop_detection_topic_name_;
 
-  double target_tree_drift_thre_;
   double uav_tilt_thre_;
+  double search_radius_;
+  bool only_target_;
   bool verbose_;
 
-  double target_theta_, target_dist_;
+  TreeDataBase tree_db_;
+  TreeHandlePtr target_tree_;
+
+  tf::Vector3 search_center_;
   tf::Vector3 uav_odom_;
   float uav_roll_, uav_pitch_, uav_yaw_;
-  tf::Vector3 target_tree_global_location_;
 
   void subscribe();
   void unsubscribe();
 
-  void visionDetectionCallback(const sensor_msgs::LaserScanConstPtr& laser_msg, const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg);
-  void laserScanCallback(const sensor_msgs::LaserScanConstPtr& laser_msg);
+  void visionDetectionCallback(const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg);
+  void laserScanCallback(const sensor_msgs::LaserScanConstPtr& raw_scan_msg, const sensor_msgs::LaserScanConstPtr& clustered_scan_msg);
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
 
 

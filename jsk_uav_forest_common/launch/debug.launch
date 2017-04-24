@@ -36,9 +36,11 @@
   <node pkg="jsk_uav_forest_perception" type="tree_tracking_node" output="screen" name="tree_tracking_node">
     <param name="laser_scan_topic_name" value="/scan_clustered" />
     <param name="uav_odom_topic_name" value="/modified_odom"/>
-    <param name="only_target" value="true" />
+    <param name="only_target" value="false" />
     <param name="search_radius" value="5.0" />
     <param name="verbose" value="true" />
+    <param name="uav_tilt_thre" value="0.03" />
+    <param name="visualization" value="true" />
   </node>
 
   ######## 2D SLAM ##################

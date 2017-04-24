@@ -3,5 +3,5 @@ scan_filter_chain:
   type: laser_filters/LaserClusteringFilter
   params:
     max_radius: 0.4 #kashiwa  #0.25(diameter: 0.5) real
-    min_points: 3
+    min_points: 15
     verbose: false

@@ -46,6 +46,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Bool.h>
 #include <tf/transform_broadcaster.h>
+#include <visualization_msgs/MarkerArray.h>
 
 /* tree labeling */
 #include <jsk_uav_forest_perception/tree_database.h>
@@ -82,6 +83,8 @@ private:
   double search_radius_;
   bool only_target_;
   bool verbose_;
+  bool visualization_;
+  bool tree_circle_fitting_;
 
   TreeDataBase tree_db_;
   TreeHandlePtr target_tree_;
@@ -96,8 +99,7 @@ private:
   void visionDetectionCallback(const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg);
   void laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_msg);
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
-
-
+  void circleFitting(const sensor_msgs::LaserScan& tree_cluster, int target_tree_index, tf::Vector3& tree_center_location, double& tree_radius);
 };
 
 #endif

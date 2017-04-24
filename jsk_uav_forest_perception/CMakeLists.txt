@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
+set(CMAKE_CXX_FLAGS "-std=c++11")
+
 find_package(OpenCV REQUIRED)
 message(WARNING "OPENCV ${OpenCV_VERSION} FOUND")
 

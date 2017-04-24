@@ -43,9 +43,11 @@
 #include <sensor_msgs/LaserScan.h>
 #include <tf/transform_broadcaster.h>
 #include <std_srvs/Empty.h>
+#include <visualization_msgs/MarkerArray.h>
 
 /* uitls */
 #include <vector>
+#include <sstream>
 
 using namespace std;
 
@@ -66,7 +68,9 @@ public:
 
     vote_++;
   }
-
+  
+  void setRadius(double radius) { radius_ = radius; }
+  const double getRadius(){ return radius_; } 
   const tf::Vector3 getPos() { return pos_; }
   inline int getVote() { return vote_; }
 
@@ -74,6 +78,7 @@ private:
   ros::NodeHandle nh_, nhp_;
 
   tf::Vector3 pos_;
+  double radius_;
   int vote_;
 };
 
@@ -90,6 +95,8 @@ public:
     nhp_.param("min_distance", min_distance_, 1.0); // 1.0[m]
     nhp_.param("max_radius", max_radius_, 0.5); // 1.0[m]
     nhp_.param("verbose", verbose_, false);
+    nhp_.param("visualization_marker_topic_name", visualization_marker_topic_name_, string("/visualization_marker"));
+    pub_visualization_marker_ = nh_.advertise<visualization_msgs::MarkerArray>(visualization_marker_topic_name_, 1);
   }
 
   ~TreeDataBase(){}
@@ -100,7 +107,7 @@ public:
     ROS_INFO("add new tree No.%d: [%f, %f]", (int)trees_.size(), new_tree->getPos().x(), new_tree->getPos().y());
   }
 
-  bool update(const tf::Vector3& tree_pos, const bool only_target = false)
+  bool update(const tf::Vector3& tree_pos, const double& tree_radius, const bool only_target = false)
   {
     bool new_tree = true;
     float min_dist = 1e6;
@@ -132,6 +139,7 @@ public:
       {
         /* update the global pos of the tree */
         target_tree->updatePos(tree_pos,false);
+	target_tree->setRadius(tree_radius);
         if(verbose_) cout << "Database tree No." << tree_index << ": update, small diff:" << min_dist << endl;
         return true;
       }
@@ -152,6 +160,44 @@ public:
     return false;
   }
 
+  void visualization(std_msgs::Header header)
+  {
+    visualization_msgs::MarkerArray msg;
+    for (vector<TreeHandlePtr>::iterator it = trees_.begin(); it != trees_.end(); it++) {
+      visualization_msgs::Marker marker;
+      marker.header.frame_id = "/world";
+      marker.header.stamp = header.stamp;
+      marker.ns = "tree_diameter";
+      marker.id = distance(trees_.begin(), it);
+      marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = (*it)->getPos().x();
+      marker.pose.position.y = (*it)->getPos().y();
+      marker.pose.position.z = 1.2;
+      marker.pose.orientation.w = 1.0;
+      marker.scale.z = 0.5;
+      marker.color.g = 1.0;
+      marker.color.a = 1.0;
+      ostringstream sout;
+      sout << fixed << setprecision(3) << (((*it)->getRadius()) * 2);
+      marker.text = sout.str();
+      marker.lifetime = ros::Duration();
+      msg.markers.push_back(marker);
+      
+      marker.ns = "tree";
+      marker.type = visualization_msgs::Marker::CYLINDER;
+      marker.scale.z = 2.0; //tree height
+      marker.scale.x = marker.scale.y = (*it)->getRadius() * 2;
+      marker.pose.position.z = marker.scale.z / 2;
+      marker.color.r = 0.95;
+      marker.color.g = 0.59;
+      marker.color.b = 0;
+      marker.color.a = 0.5;
+      msg.markers.push_back(marker);
+    }
+    pub_visualization_marker_.publish(msg);
+  }
+
 private:
   ros::NodeHandle nh_, nhp_;
 
@@ -159,9 +205,12 @@ private:
   double min_distance_; /* the min distance between two tree  */
   double max_radius_;  /* the max radius to use for tree update  */
   bool verbose_;
+  bool visualization_;
+  string visualization_marker_topic_name_;
+ 
+  ros::Publisher pub_visualization_marker_;
 
   /* the set for trees */
   vector<TreeHandlePtr> trees_;
-
 };
 #endif

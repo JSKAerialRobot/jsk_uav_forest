@@ -44,8 +44,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   /* ros param */
   nhp_.param("uav_odom_topic_name", uav_odom_topic_name_, string("uav_odom"));
   nhp_.param("vision_detection_topic_name", vision_detection_topic_name_, string("/object_direction"));
-  nhp_.param("clustered_scan_topic_name", clustered_scan_topic_name_, string("clustered_scan"));
-  nhp_.param("raw_scan_topic_name", raw_scan_topic_name_, string("raw_scan"));
+  nhp_.param("laser_scan_topic_name", laser_scan_topic_name_, string("scan"));
   nhp_.param("tree_location_topic_name", tree_location_topic_name_, string("tree_location"));
   nhp_.param("tree_global_location_topic_name", tree_global_location_topic_name_, string("tree_global_location"));
   nhp_.param("stop_detection_topic_name", stop_detection_topic_name_, string("/detection_start"));
@@ -80,10 +79,7 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   tf::Vector3 target_tree_global_location = uav_odom_ + rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
 
   /* start laesr-only subscribe */
-  sub_sync_clustered_scan_.subscribe(nhp_, clustered_scan_topic_name_, 10, ros::TransportHints().tcpNoDelay());
-  sub_sync_raw_scan_.subscribe(nhp_, raw_scan_topic_name_, 10, ros::TransportHints().tcpNoDelay());
-  sync_ = boost::shared_ptr<SyncPolicy >(new SyncPolicy(sub_sync_raw_scan_, sub_sync_clustered_scan_, 100));
-  sync_->registerCallback(&TreeTracking::laserScanCallback, this);
+  sub_laser_scan_ = nh_.subscribe(laser_scan_topic_name_, 1, &TreeTracking::laserScanCallback, this);
 
   /* add target tree to the tree data base */
   TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(target_tree_global_location));
@@ -113,14 +109,14 @@ void TreeTracking::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
   uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
 }
 
-void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& raw_scan_msg, const sensor_msgs::LaserScanConstPtr& clustered_scan_msg)
+void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_msg)
 {
   if(verbose_) ROS_INFO("receive new laser scan");
 
   /* extract the cluster */
   vector<int> cluster_index;
-  for (size_t i = 0; i < clustered_scan_msg->ranges.size(); i++)
-      if(clustered_scan_msg->ranges[i] > 0) cluster_index.push_back(i);
+  for (size_t i = 0; i < scan_msg->ranges.size(); i++)
+      if(scan_msg->ranges[i] > 0) cluster_index.push_back(i);
 
   /* find the tree most close to the previous target tree */
   int target_tree_index = 0;
@@ -138,8 +134,8 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& raw_s
 
       /* calculate the distance  */
       tf::Matrix3x3 rotation;
-      rotation.setRPY(0, 0, *it * clustered_scan_msg->angle_increment + clustered_scan_msg->angle_min + uav_yaw_);
-      tree_global_location = uav_odom_ + rotation * tf::Vector3(clustered_scan_msg->ranges[*it], 0, 0);
+      rotation.setRPY(0, 0, *it * scan_msg->angle_increment + scan_msg->angle_min + uav_yaw_);
+      tree_global_location = uav_odom_ + rotation * tf::Vector3(scan_msg->ranges[*it], 0, 0);
 
       /* omit, if the tree is not within the search area */
       if((search_center_ - tree_global_location).length() > search_radius_)
@@ -165,12 +161,12 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& raw_s
 
   /* publish the location of the target tree */
   geometry_msgs::PointStamped target_msg;
-  target_msg.header = clustered_scan_msg->header;
+  target_msg.header = scan_msg->header;
   target_msg.point.x = target_tree_local_location.x();
   target_msg.point.y = target_tree_local_location.y();
   pub_tree_location_.publish(target_msg);
   geometry_msgs::PointStamped target_global_msg;
-  target_global_msg.header = clustered_scan_msg->header;
+  target_global_msg.header = scan_msg->header;
   target_global_msg.point.x = target_tree_global_location.x();
   target_global_msg.point.y = target_tree_global_location.y();
   pub_tree_global_location_.publish(target_global_msg);

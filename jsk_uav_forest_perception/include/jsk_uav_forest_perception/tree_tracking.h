@@ -39,10 +39,6 @@
 /* ros */
 #include <ros/ros.h>
 
-/* message filter */
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-
 /* ros msg/srv */
 #include <sensor_msgs/CameraInfo.h>
 #include <geometry_msgs/Vector3Stamped.h>
@@ -58,7 +54,6 @@ using namespace std;
 
 class TreeTracking
 {
-  typedef message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan> SyncPolicy;
 
 public:
   TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp);
@@ -66,10 +61,6 @@ public:
 
 private:
   ros::NodeHandle nh_, nhp_;
-
-  boost::shared_ptr<SyncPolicy> sync_;
-  message_filters::Subscriber<sensor_msgs::LaserScan> sub_sync_raw_scan_;
-  message_filters::Subscriber<sensor_msgs::LaserScan> sub_sync_clustered_scan_;
 
   ros::Subscriber sub_vision_detection_;
   ros::Subscriber sub_uav_odom_;
@@ -80,8 +71,7 @@ private:
   ros::Publisher pub_tree_global_location_;
 
   string uav_odom_topic_name_;
-  string raw_scan_topic_name_;
-  string clustered_scan_topic_name_;
+  string laser_scan_topic_name_;
   string vision_detection_topic_name_;
   string tree_location_topic_name_;
   string tree_global_location_topic_name_;
@@ -104,7 +94,7 @@ private:
   void unsubscribe();
 
   void visionDetectionCallback(const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg);
-  void laserScanCallback(const sensor_msgs::LaserScanConstPtr& raw_scan_msg, const sensor_msgs::LaserScanConstPtr& clustered_scan_msg);
+  void laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_msg);
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
 
 

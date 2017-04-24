@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<launch>
+  <node pkg="laser_filters" type="scan_to_scan_filter_chain" output="screen" name="laser_filter_for_mapping">
+    <remap from="scan" to="scan" />
+    <remap from="scan_filtered" to="scan_for_map" />
+    <rosparam command="load" file="$(find jsk_uav_forest_common)/launch/LaserMapping.yaml" />
+  </node>
+
+  <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen" >
+    <remap from = "scan" to = "scan_for_map" />
+    <param name = "odom_frame" value = "/world" />
+    <param name = "base_frame" value = "/base_footprint" />
+  </node>
+
+</launch>

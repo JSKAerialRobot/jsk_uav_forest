@@ -4,10 +4,14 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /Image1
+        - /TF1
+        - /TF1/Status1
         - /TF1/Frames1
         - /LaserScan1
         - /PointStamped1
+        - /Map1
       Splitter Ratio: 0.497155994
     Tree Height: 541
   - Class: rviz/Selection
@@ -79,6 +83,10 @@ Visualization Manager:
           Value: true
         laser0_frame:
           Value: true
+        map:
+          Value: true
+        scanmatcher_frame:
+          Value: true
         world:
           Value: false
       Marker Scale: 1
@@ -87,6 +95,9 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
+        map:
+          scanmatcher_frame:
+            {}
         world:
           base_footprint:
             base_stabilized:
@@ -145,6 +156,15 @@ Visualization Manager:
       Topic: /tree_location
       Unreliable: false
       Value: true
+    - Alpha: 0.699999988
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /map
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -177,7 +197,7 @@ Visualization Manager:
         Value: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 68.6604156
+      Scale: 61.6962051
       Target Frame: firefly/base_link
       Value: TopDownOrtho (rviz)
       X: -0.906307459

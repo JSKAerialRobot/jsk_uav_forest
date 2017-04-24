@@ -3,7 +3,8 @@
   <arg name="use_dji" default="True" />
   <arg name="headless" default="False" />
   <arg name="no_odom" default="False" />
-  
+  <arg name="use_mapping" default="True" />
+
   ############## Viewer ###############
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find jsk_uav_forest_common)/launch/log_viewer.rviz" unless="$(arg headless)" respawn="true"/>
 
@@ -21,7 +22,6 @@
     <param name="uav_odom_topic_name" value="/ground_truth/state" unless="$(arg use_dji)" />
   </node>
 
-
   ######### Perception Node #########
     <!-- vision base -->
   <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
@@ -38,4 +38,9 @@
     <param name="uav_odom_topic_name" value="/modified_odom"/>
     <param name="verbose" value="false" />
   </node>
+
+  ######## 2D SLAM ##################
+  <include file="$(find jsk_uav_forest_common)/launch/2d_mapping.launch" if="$(arg use_mapping)" >
+  </include >
+
 </launch>

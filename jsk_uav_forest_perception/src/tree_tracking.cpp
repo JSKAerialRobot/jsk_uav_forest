@@ -56,6 +56,10 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("visualization", visualization_, false);
   nhp_.param("tree_circle_fitting", tree_circle_fitting_, true);
 
+  //temp
+  nhp_.param("tree_radius_max", tree_radius_max_, 0.3);
+  nhp_.param("tree_radius_min", tree_radius_min_, 0.1);
+
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
 
@@ -85,7 +89,7 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   sub_laser_scan_ = nh_.subscribe(laser_scan_topic_name_, 1, &TreeTracking::laserScanCallback, this);
 
   /* add target tree to the tree data base */
-  TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(target_tree_global_location));
+  TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, target_tree_global_location));
   tree_db_.add(new_tree);
   target_tree_ = new_tree;
 
@@ -139,7 +143,7 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
       tf::Matrix3x3 rotation;
       rotation.setRPY(0, 0, *it * scan_msg->angle_increment + scan_msg->angle_min + uav_yaw_);
       tree_global_location = uav_odom_ + rotation * tf::Vector3(scan_msg->ranges[*it], 0, 0);
-      
+
       /* omit, if the tree is not within the search area */
       if((search_center_ - tree_global_location).length() > search_radius_)
         {
@@ -150,22 +154,29 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 
       /* add tree to the database */
       if(verbose_) cout << "Scan input tree No." << distance(cluster_index.begin(), it) << ": start update" << endl;
-      
+
       /* calc radius with circle fitting */
-      if (tree_circle_fitting_) {
-	tf::Vector3 tree_center_pos;
-	double tree_radius;
-	circleFitting(*scan_msg, *it, tree_center_pos, tree_radius);
-	if (tree_radius > 0.15 && tree_radius < 0.25) {
-	  tf::Matrix3x3 rotation;
-	  rotation.setRPY(0, 0, uav_yaw_);
-	  tf::Vector3 tree_center_global_location = uav_odom_ + rotation * tf::Vector3(tree_center_pos.x(), tree_center_pos.y(), 0);
-	target_update += tree_db_.update(tree_center_global_location, tree_radius, only_target_); 
-	} 
-      } else {
-	target_update += tree_db_.update(tree_global_location, 0.2, only_target_); 
-      }
+      if (tree_circle_fitting_)
+        {
+          tf::Vector3 tree_center_pos;
+          double tree_radius;
+          circleFitting(*scan_msg, *it, tree_center_pos, tree_radius);
+          if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_)
+            {
+              tf::Matrix3x3 rotation;
+              rotation.setRPY(0, 0, uav_yaw_);
+              tf::Vector3 tree_center_global_location = uav_odom_ + rotation * tf::Vector3(tree_center_pos.x(), tree_center_pos.y(), 0);
+              target_update += tree_db_.updateSingleTree(tree_center_global_location, tree_radius, only_target_);
+            }
+        }
+      else
+        {
+          target_update += tree_db_.updateSingleTree(tree_global_location, 0.2, only_target_);
+        }
     }
+
+  /* update the whole database(sorting) */
+  tree_db_.update();
 
   tf::Vector3 target_tree_global_location = target_tree_->getPos();
   tf::Matrix3x3 rotation;
@@ -216,7 +227,7 @@ void TreeTracking::circleFitting(const sensor_msgs::LaserScan& tree_cluster, int
     float r = fabs(tree_cluster.ranges[i]); //m
     double x = r * cos(theta);
     double y = r * sin(theta);
-    val[0] += x; 
+    val[0] += x;
     val[1] += y;
     val[2] += x * x;
     val[3] += y * y;
@@ -225,7 +236,7 @@ void TreeTracking::circleFitting(const sensor_msgs::LaserScan& tree_cluster, int
     val[6] += -(x * x * y + y * y * y);
     val[7] += 1;
   }
-  
+
   tf::Matrix3x3 m(val[2], val[4], val[0], val[4], val[3], val[1], val[0], val[1], val[7]);
   tf::Vector3 v(val[5], val[6], -val[2] - val[3]);
   tf::Vector3 solution = m.inverse() * v;

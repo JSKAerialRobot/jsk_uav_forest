@@ -10,9 +10,9 @@
   <arg name="rqt_gui" default="True" />
   <arg name="circle_motion_times" default="1" />
 
-  <arg name="start_x" value="-8"/>
-  <arg name="start_y" value="0"/>
-  <arg name="start_z" value="0.5"/>
+  <arg name="start_x" default="-8"/>
+  <arg name="start_y" default="0"/>
+  <arg name="start_z" default="0.5"/>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find jsk_uav_forest_simulation)/gazebo_model/world/forest.world" />

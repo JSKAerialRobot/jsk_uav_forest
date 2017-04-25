@@ -93,6 +93,9 @@ private:
   tf::Vector3 uav_odom_;
   float uav_roll_, uav_pitch_, uav_yaw_;
 
+  //temp
+  double tree_radius_max_, tree_radius_min_;
+
   void subscribe();
   void unsubscribe();
 

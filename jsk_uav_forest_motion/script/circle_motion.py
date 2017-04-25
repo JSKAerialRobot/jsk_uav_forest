@@ -235,18 +235,22 @@ class CircleMotion:
         if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
             vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_) #hover
         if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
-            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_, self.tree_xy_pos_[1]]),
-                                                    self.takeoff_height_,
-                                                    self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
+            tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
+            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
+                                                              self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
+                                 self.takeoff_height_,
+                                 self.uav_yaw_ + tree_direction)
         if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_motion_count_ * self.circle_motion_height_step_, self.circle_y_vel_, self.circle_radius_)
         if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
         #use global frame
             #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.circle_initial_xy_, self.takeoff_height_, self.circle_initial_yaw_)
         #use local frame
-            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_, self.tree_xy_pos_[1]]), 
-                                                    self.takeoff_height_,
-                                                    self.uav_yaw_ + math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0]))
+            tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
+            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
+                                                              self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
+                                 self.takeoff_height_,
+                                 self.uav_yaw_ + tree_direction)
 
         if self.state_machine_ == self.RETURN_HOME_STATE_:
         #use global frame

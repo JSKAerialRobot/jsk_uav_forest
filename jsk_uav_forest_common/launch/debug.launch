@@ -47,6 +47,14 @@
 
   </node>
 
+
+  ######### Obstacle ################
+  <node pkg="jsk_uav_forest_motion" type="motion_plannar_client.py" name="motion_plannar" output="screen" args="false">
+    <param name="task_kind" value="2" />
+    <param name="uav_odom_sub_topic_name" value="/modified_odom"/>
+    <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
+  </node>
+
   ######## 2D SLAM ##################
   <include file="$(find jsk_uav_forest_common)/launch/2d_mapping.launch" if="$(arg use_mapping)" >
   </include >

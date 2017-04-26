@@ -72,7 +72,7 @@ class MotionPlannar:
         self.plannar_state_machine_pub_topic_name_ = rospy.get_param("~plannar_state_machine_pub_topic_name", "plannar_state_machine")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.target_pos_sub_topic_name_ = rospy.get_param("~target_pos_sub_topic_name", "uav_target_pos")
-        self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "tree_cluster")
+        self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
@@ -87,7 +87,7 @@ class MotionPlannar:
         self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
-        self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.75)
+        self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
 
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -159,6 +159,8 @@ class MotionPlannar:
         ## nearest_obstalce_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstalce_id initial value is -1)
         ## when potential nearest_obstacle makes nearest_obstalce_distance_to_head_direction shorter than safety_minimum_radius, then obstacle-avoidance needs consideration
         if nearest_obstalce_id >= 0 and nearest_obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
+            rospy.loginfo("Meet obstacle: %f, [range] %f, [ang] %f", nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstalce_id], nearest_obstacle_angle / math.pi * 180.0)
+
             return [True, nearest_obstacle_angle]
         else:
             return [False]
@@ -246,10 +248,10 @@ class MotionPlannar:
                 self.plannar_state_machine_ = self.AVOID_OBSTACLE_STATE_
                 ## if nearest obstacle is on drone right side, drone moves left
                 if nearest_obstacle[1] < 0.0:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 1.0]), self.target_z_pos_, self.target_yaw_)
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
                 ## if nearest obstacle is on drone left side, drone moves right
                 else:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -1.0]), self.target_z_pos_, self.target_yaw_)
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
             ## if no obstacle influence, just follow the command from circle_motion_server
             else:                
                 vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
@@ -257,9 +259,9 @@ class MotionPlannar:
             nearest_obstacle = self.nearestObstacleSafetyDetection()
             if nearest_obstacle[0]:
                 if nearest_obstacle[1] < 0.0:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 1.0]), self.target_z_pos_, self.target_yaw_)
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
                 else:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -1.0]), self.target_z_pos_, self.target_yaw_)
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
             ## if drone is already out of obstacle influence, change back to SAFE_FLYING_STATE
             else:
                 self.plannar_state_machine_ = self.SAFE_FLYING_STATE_

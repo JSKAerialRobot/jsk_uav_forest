@@ -177,17 +177,12 @@ class CircleMotion:
             return
 
         delta_z = target_z - self.uav_z_pos_
-        
         delta_yaw = target_yaw - self.uav_yaw_
-        if delta_yaw > math.pi:
-            delta_yaw -= math.pi * 2
-        elif delta_yaw < -math.pi:
-            delta_yaw += math.pi * 2
-        
+
         nav_xy_vel = delta_xy * self.nav_xy_pos_pgain_
         nav_z_vel = delta_z * self.nav_z_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
-        
+
         nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
         vel_msg = Twist()
         vel_msg.linear.x = nav_xy_vel[0]

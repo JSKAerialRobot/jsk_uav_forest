@@ -42,6 +42,16 @@ $ roslaunch jsk_uav_forest_simulation forest_simulation.launch
 $ rosservice call /task_start true
 ```
 
+
+## how to activate plannar
+
+- arg plannar means whether to add motion planning, arg collision means whether to add obstacle which will cause collision into simulation.
+- When adding obstacles, remember not to block the view from drone to red tree:
+```
+$ roslaunch jsk_uav_forest_simulation forest_simulation.launch plannar:=true collision:=true
+```
+
+
 ## forest challenge (using DJI M100 + DJI Guidance + Pointgrey Chameleon3 + Hokuyo UST20LX)
 1. integrated launch file in UAV
 ```

@@ -74,6 +74,7 @@ class CircleMotion:
         self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
         self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
 
+        self.plannar_mode_ = rospy.get_param("~motion_planning", False)
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
@@ -91,7 +92,7 @@ class CircleMotion:
         self.circle_motion_height_step_ = rospy.get_param("~circle_motion_height_step_", 0.5)
         self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
-        
+
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
@@ -101,6 +102,9 @@ class CircleMotion:
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         self.task_start_service_ = rospy.Service(self.task_start_service_name_, SetBool, self.taskStartCallback)
+
+        if self.plannar_mode_:
+            rospy.loginfo("Using motion planning.")
 
     def odomCallback(self, msg):
         self.odom_ = msg
@@ -140,7 +144,7 @@ class CircleMotion:
             res.message = "Task does not start"
             rospy.loginfo("Task does not start")
         return res
-        
+
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
             delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_])
@@ -197,6 +201,12 @@ class CircleMotion:
 
         return vel_msg
 
+    def setGoal(self, frame, target_xy, target_z, target_yaw):
+        self.target_xy_pos_ = target_xy
+        self.target_z_pos_ = target_z
+        self.target_yaw_ = target_yaw
+        self.target_frame_ = frame
+
     def goCircle(self, circle_center_xy, target_z, target_y_vel, radius):
         nav_xy_vel = np.zeros(2)
         nav_xy_vel[0] = -(radius - circle_center_xy[0]) * self.nav_xy_pos_pgain_
@@ -235,17 +245,24 @@ class CircleMotion:
         if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
             vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_) #hover
         if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
-            tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
-            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
-                                                              self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
-                                 self.takeoff_height_,
-                                 self.uav_yaw_ + tree_direction)
+
+            if not self.plannar_mode_:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
+                                                                  self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
+                                     self.takeoff_height_,
+                                     self.uav_yaw_ + tree_direction)
+            else:
+                self.setGoal(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
+                                                          self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
+                             self.takeoff_height_,
+                             self.uav_yaw_ + tree_direction)
         if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_motion_count_ * self.circle_motion_height_step_, self.circle_y_vel_, self.circle_radius_)
         if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
         #use global frame
             #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.circle_initial_xy_, self.takeoff_height_, self.circle_initial_yaw_)
         #use local frame
+
             tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
             vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
                                                               self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
@@ -256,7 +273,10 @@ class CircleMotion:
         #use global frame
             #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_)
         #use local frame
-            vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_pos_, self.takeoff_height_, self.initial_yaw_)
+            if not self.plannar_mode_:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_pos_, self.takeoff_height_, self.initial_yaw_)
+            else:
+                self.setGoal(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_pos_, self.takeoff_height_, self.initial_yaw_)
     #end navigation
 
     #state machine
@@ -318,9 +338,11 @@ class CircleMotion:
         target_pos_msg.pose.pose.orientation.w = self.target_yaw_
         self.target_pos_pub_.publish(target_pos_msg)
 
-        self.vel_pub_.publish(vel_msg)
-        if self.use_dji_ == True:
-            self.drone_.velocity_control(0, vel_msg.linear.x, -vel_msg.linear.y, vel_msg.linear.z, -vel_msg.angular.z * 180 / math.pi) #machine frame yaw_rate[deg]
+        ## consider obstacle avoidance in APPROACHING_TO_TREE_STATE and RETURN_HOME_STATE, velocity will be controled in motion_plannar_client
+        if not(self.plannar_mode_ and (self.state_machine_ == self.APPROACHING_TO_TREE_STATE_ or self.state_machine_ == self.RETURN_HOME_STATE_)):
+            self.vel_pub_.publish(vel_msg)
+            if self.use_dji_ == True:
+                self.drone_.velocity_control(0, vel_msg.linear.x, -vel_msg.linear.y, vel_msg.linear.z, -vel_msg.angular.z * 180 / math.pi) #machine frame yaw_rate[deg]
 
 if __name__ == '__main__':
     try:

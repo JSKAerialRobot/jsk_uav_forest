@@ -46,9 +46,10 @@ class CircleMotion:
         self.APPROACHING_TO_TREE_STATE_ = 3
         self.START_CIRCLE_MOTION_STATE_ = 4
         self.FINISH_CIRCLE_MOTION_STATE_ = 5
-        self.RETURN_HOME_STATE_ = 6
+        self.TURN_STATE_ = 6
+        self.RETURN_HOME_STATE_ = 7
         self.state_machine_ = self.INITIAL_STATE_
-        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "return home"]
+        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "turn", "return home"]
         self.tree_detection_wait_count_ = 0
         self.circle_motion_count_ = 0
 
@@ -59,7 +60,6 @@ class CircleMotion:
         self.uav_yaw_old_ = 0.0
         self.uav_yaw_overflow_ = 0
         self.uav_accumulated_yaw_ = 0.0
-
 
         self.cycle_count_ = 0
         self.tree_xy_pos_ = np.zeros(2)
@@ -91,6 +91,7 @@ class CircleMotion:
         self.circle_motion_height_step_ = rospy.get_param("~circle_motion_height_step_", 0.5)
         self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
+        self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
         
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -150,6 +151,11 @@ class CircleMotion:
             return
 
         delta_yaw = target_yaw - self.uav_yaw_
+        if delta_yaw > math.pi:
+            delta_yaw -= math.pi * 2
+        elif delta_yaw < -math.pi:
+            delta_yaw += math.pi * 2
+
         current_vel = np.array([self.odom_.twist.twist.linear.x, self.odom_.twist.twist.linear.y, self.odom_.twist.twist.linear.z])
         if np.linalg.norm(delta_pos) < self.nav_pos_convergence_thresh_ and abs(delta_yaw) < self.nav_yaw_convergence_thresh_ and np.linalg.norm(current_vel) < self.nav_vel_convergence_thresh_:
             return True
@@ -255,13 +261,16 @@ class CircleMotion:
             vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
                                                               self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
                                  self.takeoff_height_,
-                                 self.uav_yaw_ + tree_direction)
-
+                                 self.circle_initial_yaw_)
+        if self.state_machine_ == self.TURN_STATE_:
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.turn_uav_xy_pos_, self.takeoff_height_, self.turn_uav_yaw_ + math.pi)
         if self.state_machine_ == self.RETURN_HOME_STATE_:
-        #use global frame
-            #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_)
-        #use local frame
-            vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_pos_, self.takeoff_height_, self.initial_yaw_)
+            if self.turn_before_return_ == False:
+                #use local frame
+                vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_local_pos_, self.takeoff_height_, self.initial_yaw_)
+            else:
+                #use global frame
+                vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.turn_uav_yaw_ + math.pi)
     #end navigation
 
     #state machine
@@ -282,28 +291,41 @@ class CircleMotion:
             self.tree_detection_wait_count_ += 1
             if self.tree_detection_wait_count_ > self.control_rate_ * self.tree_detection_wait_:
                 self.state_machine_ = self.APPROACHING_TO_TREE_STATE_
-                self.initial_target_tree_xy_pos_ = np.array(self.tree_xy_pos_)
-
+                rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
+                self.initial_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_pos_) + self.uav_xy_pos_
+                self.initial_target_tree_xy_local_pos_ = self.tree_xy_pos_
+                
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 if self.task_kind_ == 1:
                     self.state_machine_ = self.RETURN_HOME_STATE_
                 elif self.task_kind_ == 2:
                     self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
-                    self.circle_initial_yaw_ = self.uav_accumulated_yaw_
+                    self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
+                    self.circle_initial_yaw_ = self.uav_yaw_
                     self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
 
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
-            if abs(self.circle_initial_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
+            if abs(self.circle_initial_accumulated_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
                 self.circle_motion_count_ += 1
-                self.circle_initial_yaw_ = self.uav_accumulated_yaw_
+                self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
                 if self.circle_motion_count_ == self.circle_motion_times_:
                     self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
 
         elif self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+                if self.turn_before_return_ == True:
+                    rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
+                    self.final_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_pos_) + self.uav_xy_pos_
+                    self.turn_uav_xy_pos_ = self.uav_xy_pos_
+                    self.turn_uav_yaw_ = self.uav_yaw_
+                    self.state_machine_ = self.TURN_STATE_
+                else:
+                    self.state_machine_ = self.RETURN_HOME_STATE_
+        elif self.state_machine_ == self.TURN_STATE_:
+            if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.state_machine_ = self.RETURN_HOME_STATE_
-
+                
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
             pass
     #end state machine

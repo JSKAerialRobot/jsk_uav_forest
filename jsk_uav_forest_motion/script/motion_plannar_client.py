@@ -17,7 +17,7 @@ from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseStamped
 
 class MotionPlannar:
-    
+
     def init(self):
         if sys.argv[1] == 'True':
             self.use_dji_ = True
@@ -32,7 +32,7 @@ class MotionPlannar:
             rospy.init_node('motion_plannar', anonymous=True)
 
         rospy.loginfo("Using motion planning!!!")
-        
+
         self.odom_ = Odometry()
         self.GLOBAL_FRAME_ = 0
         self.LOCAL_FRAME_ = 1
@@ -50,9 +50,8 @@ class MotionPlannar:
         self.INITIAL_STATE_ = 0
         self.SAFE_FLYING_STATE_ = 1
         self.AVOID_OBSTACLE_STATE_ = 2
-        self.plannar_state_machine_ = self.INITIAL_STATE_                                    
+        self.plannar_state_machine_ = self.INITIAL_STATE_
         self.plannar_state_name_ = ["initial", "safe_flying", "avoid_obstacle"]
-        
         self.global_state_machine_ = self.INITIAL_STATE_
         self.global_state_name_ = String()
         self.INITIAL_STATE_ = 0
@@ -62,12 +61,11 @@ class MotionPlannar:
         self.START_CIRCLE_MOTION_STATE_ = 4
         self.FINISH_CIRCLE_MOTION_STATE_ = 5
         self.RETURN_HOME_STATE_ = 6
-        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "return home"]                            
-
+        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "return home"]
         self.uav_xy_pos_ = np.zeros(2)
         self.uav_z_pos_ = 0.0
         self.uav_yaw_ = 0.0
-    
+
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
         self.plannar_state_machine_pub_topic_name_ = rospy.get_param("~plannar_state_machine_pub_topic_name", "plannar_state_machine")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
@@ -75,6 +73,7 @@ class MotionPlannar:
         self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
         self.control_rate_ = rospy.get_param("~control_rate", 20)
+        self.cluster_num_min_ = rospy.get_param("~cluster_num_min", 10)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
         self.nav_z_pos_pgain_ = rospy.get_param("~nav_z_pos_pgain", 1.0)
         self.nav_yaw_pgain_ = rospy.get_param("~nav_yaw_pgain", 1.0)
@@ -97,7 +96,6 @@ class MotionPlannar:
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_cluster_sub_ = rospy.Subscriber(self.tree_cluster_sub_topic_name_, LaserScan, self.treeClusterCallback)
         self.global_state_name_sub_ = rospy.Subscriber(self.global_state_name_sub_topic_name_, String, self.globalStateNameCallback)
-        
 
     def odomCallback(self, msg):
         self.odom_ = msg
@@ -122,7 +120,7 @@ class MotionPlannar:
         rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)], [math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
         local_pos = np.dot(np.linalg.inv(rot_mat), global_pos - self.uav_xy_pos_)
         return local_pos
-    
+
     def targetCallback(self, msg):
         target_x_pos = msg.pose.pose.position.x
         target_y_pos = msg.pose.pose.position.y
@@ -148,7 +146,17 @@ class MotionPlannar:
         ## obstacle_ignore radius should not be larger than 1m, since task2 it requires drone to arrive within 1m distance to red tree
         ## TODO: add changable obstacle_ignore radius, since 1m is too near for normal obstacle
         for i in range(0, len(self.tree_cluster_.ranges)):
-            if not math.isnan(self.tree_cluster_.ranges[i]):
+
+            if self.tree_cluster_.ranges[i] > 0:
+                # check whether the obstacle is big enough
+                big_cluster = True
+                for j in range (-self.cluster_num_min_ / 2, self.cluster_num_min_ / 2):
+                    if math.isnan(self.tree_cluster_.ranges[i + j]):
+                        big_cluster = False
+                        break
+                if not big_cluster:
+                    continue
+
                 if abs(self.tree_cluster_.ranges[i]) < self.drone_obstacle_ignore_maximum_radius_:
                     obstacle_angle = i * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
                     obstalce_distance_to_head_direction = abs(self.tree_cluster_.ranges[i] * math.sin(obstacle_angle))
@@ -159,12 +167,11 @@ class MotionPlannar:
         ## nearest_obstalce_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstalce_id initial value is -1)
         ## when potential nearest_obstacle makes nearest_obstalce_distance_to_head_direction shorter than safety_minimum_radius, then obstacle-avoidance needs consideration
         if nearest_obstalce_id >= 0 and nearest_obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
-            rospy.loginfo("Meet obstacle: %f, [range] %f, [ang] %f", nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstalce_id], nearest_obstacle_angle / math.pi * 180.0)
+            rospy.logwarn("Meet obstacle: %f, [range] %f, [ang] %f", nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstalce_id], nearest_obstacle_angle / math.pi * 180.0)
 
             return [True, nearest_obstacle_angle]
         else:
             return [False]
-        
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
             delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_]) 
@@ -198,23 +205,19 @@ class MotionPlannar:
             delta_xy = target_xy
         else:
             return
-        
         delta_z = target_z - self.uav_z_pos_
         delta_yaw = target_yaw - self.uav_yaw_
-       
         nav_xy_vel = delta_xy * self.nav_xy_pos_pgain_
         nav_z_vel = delta_z * self.nav_z_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
-      
         nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
-        vel_msg = Twist() 
+        vel_msg = Twist()
         vel_msg.linear.x = nav_xy_vel[0]
         vel_msg.linear.y = nav_xy_vel[1]
         vel_msg.linear.z = nav_z_vel
         vel_msg.angular.z = nav_yaw_vel
         return vel_msg
 
-    
     def goCircle(self, circle_center_xy, target_z, target_y_vel, radius):
         nav_xy_vel = np.zeros(2)
         nav_xy_vel[0] = -(radius - circle_center_xy[0]) * self.nav_xy_pos_pgain_
@@ -231,7 +234,6 @@ class MotionPlannar:
 
         return vel_msg
 
-    
     def controlCallback(self, event):
         ## navigation control
         vel_msg = Twist()
@@ -253,7 +255,7 @@ class MotionPlannar:
                 else:
                     vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
             ## if no obstacle influence, just follow the command from circle_motion_server
-            else:                
+            else:
                 vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
         elif (self.plannar_state_machine_ == self.AVOID_OBSTACLE_STATE_):
             nearest_obstacle = self.nearestObstacleSafetyDetection()
@@ -266,11 +268,10 @@ class MotionPlannar:
             else:
                 self.plannar_state_machine_ = self.SAFE_FLYING_STATE_
                 vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
-            
-        
+
         #publish
         self.plannar_state_machine_pub_.publish(self.plannar_state_name_[self.plannar_state_machine_])
-        
+
         self.vel_pub_.publish(vel_msg)
         if self.use_dji_ == True:
             self.drone_.velocity_control(0, vel_msg.linear.x, -vel_msg.linear.y, vel_msg.linear.z, -vel_msg.angular.z * 180 / math.pi) #machine frame

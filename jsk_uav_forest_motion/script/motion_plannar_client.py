@@ -132,8 +132,9 @@ class MotionPlannar:
         if np.linalg.norm(self.target_xy_local_pos_) < self.safe_zone_radius_:
            #rospy.loginfo("safe zone, x :%f, y: %f", self.target_xy_local_pos_[0], self.target_xy_local_pos_[1])
            return [False]
-        nearest_obstalce_distance_to_head_direction = 10000.0
-        nearest_obstalce_id = -1
+        nearest_obstacle_distance_to_head_direction = 0.0
+        nearest_obstacle_distance_in_head_direction = 10000.0
+        nearest_obstacle_id = -1
 
         ## TODO: add changable obstacle_ignore radius, since 1m is too near for normal obstacle
         for i in range(0, len(self.tree_cluster_.ranges)):
@@ -150,15 +151,19 @@ class MotionPlannar:
 
                 if abs(self.tree_cluster_.ranges[i]) < self.drone_obstacle_ignore_maximum_radius_:
                     obstacle_angle = i * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
-                    obstalce_distance_to_head_direction = abs(self.tree_cluster_.ranges[i] * math.sin(obstacle_angle))
-                    if obstalce_distance_to_head_direction < nearest_obstalce_distance_to_head_direction:
-                        nearest_obstacle_distance_to_head_direction = obstalce_distance_to_head_direction
-                        nearest_obstalce_id = i
-        nearest_obstacle_angle = nearest_obstalce_id * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
-        ## nearest_obstalce_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstalce_id initial value is -1)
-        ## when potential nearest_obstacle makes nearest_obstalce_distance_to_head_direction shorter than safety_minimum_radius, then obstacle-avoidance needs consideration
-        if nearest_obstalce_id >= 0 and nearest_obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
-            rospy.logwarn("Meet obstacle: %f, [range] %f, [ang] %f in phase: %s", nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstalce_id], nearest_obstacle_angle / math.pi * 180.0, self.global_state_name_.data)
+                    obstacle_distance_to_head_direction = abs(self.tree_cluster_.ranges[i] * math.sin(obstacle_angle))
+                    if obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
+                        ## the closest obstacle in head direction influence in earlist time
+                        ## todo: obstacles nearly passed (obstacle_angle > 90 deg), whether to consider or not
+                        obstacle_distance_in_head_direction = abs(self.tree_cluster_.ranges[i]) * math.cos(obstacle_angle)
+                        if obstacle_distance_in_head_direction < nearest_obstacle_distance_in_head_direction:
+                            nearest_obstacle_distance_in_head_direction = obstacle_distance_in_head_direction
+                            nearest_obstacle_distance_to_head_direction = obstacle_distance_to_head_direction
+                            nearest_obstacle_id = i
+        ## nearest_obstacle_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstacle_id initial value is -1)
+        if nearest_obstacle_id >= 0:
+            nearest_obstacle_angle = nearest_obstacle_id * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
+            rospy.logwarn("Meet obstacle: [x] %f, [y] %f, [range] %f, [ang] %f in phase: %s", nearest_obstacle_distance_in_head_direction, nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstacle_id], nearest_obstacle_angle / math.pi * 180.0, self.global_state_name_.data)
 
             return [True, nearest_obstacle_angle]
         else:

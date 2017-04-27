@@ -49,9 +49,8 @@ class MotionPlannar:
         #state machine
         self.INITIAL_STATE_ = 0
         self.SAFE_FLYING_STATE_ = 1
-        self.AVOID_OBSTACLE_STATE_ = 2
         self.plannar_state_machine_ = self.INITIAL_STATE_
-        self.plannar_state_name_ = ["initial", "safe_flying", "avoid_obstacle"]
+        self.plannar_state_name_ = ["initial", "safe_flying"]
         self.global_state_machine_ = self.INITIAL_STATE_
         self.global_state_name_ = String()
         self.INITIAL_STATE_ = 0
@@ -247,7 +246,6 @@ class MotionPlannar:
             ## Judge whether requiring obstacles_avoidance
             nearest_obstacle = self.nearestObstacleSafetyDetection()
             if nearest_obstacle[0]:
-                self.plannar_state_machine_ = self.AVOID_OBSTACLE_STATE_
                 ## if nearest obstacle is on drone right side, drone moves left
                 if nearest_obstacle[1] < 0.0:
                     vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
@@ -256,17 +254,6 @@ class MotionPlannar:
                     vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
             ## if no obstacle influence, just follow the command from circle_motion_server
             else:
-                vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
-        elif (self.plannar_state_machine_ == self.AVOID_OBSTACLE_STATE_):
-            nearest_obstacle = self.nearestObstacleSafetyDetection()
-            if nearest_obstacle[0]:
-                if nearest_obstacle[1] < 0.0:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
-                else:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
-            ## if drone is already out of obstacle influence, change back to SAFE_FLYING_STATE
-            else:
-                self.plannar_state_machine_ = self.SAFE_FLYING_STATE_
                 vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
 
         #publish

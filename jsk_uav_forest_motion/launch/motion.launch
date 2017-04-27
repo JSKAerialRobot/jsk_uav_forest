@@ -19,15 +19,15 @@
     <param name="task_kind" value="$(arg task_kind)" />
     <param name="motion_planning" value="$(arg motion_planning)" />
     <param name="circle_motion_times" value="$(arg circle_motion_times)" />
-    <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)" if="$(arg use_dji)"/>
     <param name="turn_before_return" value="$(arg turn_before_return)" />
+    <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)"/>
     <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
   </node>
 
   <group if="$(arg motion_planning)">
     <node pkg="jsk_uav_forest_motion" type="motion_plannar_client.py" name="motion_plannar" output="screen" args="$(arg use_dji)">
       <param name="task_kind" value="$(arg task_kind)" />
-      <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)" if="$(arg use_dji)"/>
+      <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)"/>
       <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
     </node>
   </group>

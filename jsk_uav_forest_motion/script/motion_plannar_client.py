@@ -61,6 +61,7 @@ class MotionPlannar:
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.cluster_num_min_ = rospy.get_param("~cluster_num_min", 10)
+        self.safe_zone_radius_ = rospy.get_param("~safe_zone", 1.0)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
         self.nav_z_pos_pgain_ = rospy.get_param("~nav_z_pos_pgain", 1.0)
         self.nav_yaw_pgain_ = rospy.get_param("~nav_yaw_pgain", 1.0)
@@ -125,10 +126,15 @@ class MotionPlannar:
         self.start_planning_ = True
 
     def nearestObstacleSafetyDetection(self):
+
+        ## If closed to the target tree within a certain distance, that is safe zone,
+        ## we do not need to the obstacle avoidance.
+        if np.linalg.norm(self.target_xy_local_pos_) < self.safe_zone_radius_:
+           #rospy.loginfo("safe zone, x :%f, y: %f", self.target_xy_local_pos_[0], self.target_xy_local_pos_[1])
+           return [False]
         nearest_obstalce_distance_to_head_direction = 10000.0
         nearest_obstalce_id = -1
-        ## get the nearest_obstalce_distance_to_head_direction from laser lines which is shorter than obstacle_ignore radius
-        ## obstacle_ignore radius should not be larger than 1m, since task2 it requires drone to arrive within 1m distance to red tree
+
         ## TODO: add changable obstacle_ignore radius, since 1m is too near for normal obstacle
         for i in range(0, len(self.tree_cluster_.ranges)):
 
@@ -152,7 +158,7 @@ class MotionPlannar:
         ## nearest_obstalce_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstalce_id initial value is -1)
         ## when potential nearest_obstacle makes nearest_obstalce_distance_to_head_direction shorter than safety_minimum_radius, then obstacle-avoidance needs consideration
         if nearest_obstalce_id >= 0 and nearest_obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
-            rospy.logwarn("Meet obstacle: %f, [range] %f, [ang] %f", nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstalce_id], nearest_obstacle_angle / math.pi * 180.0)
+            rospy.logwarn("Meet obstacle: %f, [range] %f, [ang] %f in phase: %s", nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstalce_id], nearest_obstacle_angle / math.pi * 180.0, self.global_state_name_.data)
 
             return [True, nearest_obstacle_angle]
         else:

@@ -47,26 +47,14 @@ class MotionPlannar:
         self.tree_cluster_ = LaserScan()
 
         #state machine
-        self.INITIAL_STATE_ = 0
-        self.SAFE_FLYING_STATE_ = 1
-        self.plannar_state_machine_ = self.INITIAL_STATE_
-        self.plannar_state_name_ = ["initial", "safe_flying"]
-        self.global_state_machine_ = self.INITIAL_STATE_
+        self.start_planning_ = False
         self.global_state_name_ = String()
-        self.INITIAL_STATE_ = 0
-        self.TAKEOFF_STATE_ = 1
-        self.TREE_DETECTION_START_STATE_ = 2
-        self.APPROACHING_TO_TREE_STATE_ = 3
-        self.START_CIRCLE_MOTION_STATE_ = 4
-        self.FINISH_CIRCLE_MOTION_STATE_ = 5
-        self.RETURN_HOME_STATE_ = 6
-        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "return home"]
+
         self.uav_xy_pos_ = np.zeros(2)
         self.uav_z_pos_ = 0.0
         self.uav_yaw_ = 0.0
 
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
-        self.plannar_state_machine_pub_topic_name_ = rospy.get_param("~plannar_state_machine_pub_topic_name", "plannar_state_machine")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.target_pos_sub_topic_name_ = rospy.get_param("~target_pos_sub_topic_name", "uav_target_pos")
         self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
@@ -90,7 +78,6 @@ class MotionPlannar:
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
-        self.plannar_state_machine_pub_ = rospy.Publisher(self.plannar_state_machine_pub_topic_name_, String, queue_size = 10)
         self.target_pos_sub_ = rospy.Subscriber(self.target_pos_sub_topic_name_, Odometry, self.targetCallback)
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_cluster_sub_ = rospy.Subscriber(self.tree_cluster_sub_topic_name_, LaserScan, self.treeClusterCallback)
@@ -135,8 +122,7 @@ class MotionPlannar:
             self.target_xy_local_pos_ = self.cvtGlobaltoLocal(self.target_xy_global_pos_)
 
         ## when first time to get target information, intialize plannar state to SAFE_FLYING_STATE to get ready to move
-        if self.plannar_state_machine_ == self.INITIAL_STATE_:
-            self.plannar_state_machine_ = self.SAFE_FLYING_STATE_
+        self.start_planning_ = True
 
     def nearestObstacleSafetyDetection(self):
         nearest_obstalce_distance_to_head_direction = 10000.0
@@ -173,9 +159,9 @@ class MotionPlannar:
             return [False]
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
-            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_]) 
+            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_])
         elif frame == self.LOCAL_FRAME_:
-            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_]) 
+            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_])
         else:
             return
 
@@ -217,47 +203,30 @@ class MotionPlannar:
         vel_msg.angular.z = nav_yaw_vel
         return vel_msg
 
-    def goCircle(self, circle_center_xy, target_z, target_y_vel, radius):
-        nav_xy_vel = np.zeros(2)
-        nav_xy_vel[0] = -(radius - circle_center_xy[0]) * self.nav_xy_pos_pgain_
-        nav_xy_vel[1] = target_y_vel
-        nav_z_vel = target_z - self.uav_z_pos_
-        nav_yaw_vel = math.atan2(circle_center_xy[1], circle_center_xy[0]) * self.nav_yaw_pgain_ - target_y_vel / radius #feedback+feedforward
-        nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
-
-        vel_msg = Twist()
-        vel_msg.linear.x = nav_xy_vel[0]
-        vel_msg.linear.y = nav_xy_vel[1]
-        vel_msg.linear.z = nav_z_vel
-        vel_msg.angular.z = nav_yaw_vel
-
-        return vel_msg
-
     def controlCallback(self, event):
         ## navigation control
         vel_msg = Twist()
+
+        if not self.start_planning_:
+            return
+
         ## TODO:
         ## Currently, only consider obstacle avoidance in self.APPROACHING_TO_TREE_STATE_ and self.FINISH_CIRCLE_MOTION_STATE_, where we use self.setGoal() function to publish goal data to motion_plannar_client for safety control.
-        if (self.global_state_name_.data == "circle motion" or self.global_state_name_.data == "takeoff" or self.global_state_name_.data == "tree detection start"):
+        if (self.global_state_name_.data != "approaching to tree" and self.global_state_name_.data != "return home"):
             return
-        if (self.plannar_state_machine_ == self.INITIAL_STATE_):
-            return
-        if (self.plannar_state_machine_ == self.SAFE_FLYING_STATE_):
-            ## Judge whether requiring obstacles_avoidance
-            nearest_obstacle = self.nearestObstacleSafetyDetection()
-            if nearest_obstacle[0]:
-                ## if nearest obstacle is on drone right side, drone moves left
-                if nearest_obstacle[1] < 0.0:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
-                ## if nearest obstacle is on drone left side, drone moves right
-                else:
-                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
-            ## if no obstacle influence, just follow the command from circle_motion_server
-            else:
-                vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
 
-        #publish
-        self.plannar_state_machine_pub_.publish(self.plannar_state_name_[self.plannar_state_machine_])
+        ## Judge whether requiring obstacles_avoidance
+        nearest_obstacle = self.nearestObstacleSafetyDetection()
+        if nearest_obstacle[0]:
+            ## if nearest obstacle is on drone right side, drone moves left
+            if nearest_obstacle[1] < 0.0:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
+            ## if nearest obstacle is on drone left side, drone moves right
+            else:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
+        ## if no obstacle influence, just follow the command from circle_motion_server
+        else:
+            vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
 
         self.vel_pub_.publish(vel_msg)
         if self.use_dji_ == True:

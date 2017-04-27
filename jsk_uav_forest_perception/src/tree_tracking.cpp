@@ -34,6 +34,7 @@
  *********************************************************************/
 
 #include "jsk_uav_forest_perception/tree_tracking.h"
+#include "jsk_uav_forest_perception/util/circle_detection.h"
 
 TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nh_(nh), nhp_(nhp),
@@ -158,9 +159,24 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
       /* calc radius with circle fitting */
       if (tree_circle_fitting_)
         {
-          tf::Vector3 tree_center_pos;
-          double tree_radius;
-          circleFitting(*scan_msg, *it, tree_center_pos, tree_radius);
+	  vector<tf::Vector3> points;
+	  for (int i = *it; !isnan(scan_msg->ranges[i]) && i < scan_msg->ranges.size(); i++) 
+	    {
+	      double r = fabs(scan_msg->ranges[i]);
+	      double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
+	      tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
+	      points.push_back(point);
+	    }
+	  for (int i = (*it) - 1; !isnan(scan_msg->ranges[i]) && i > 0; i--) 
+	    {
+	      double r = fabs(scan_msg->ranges[i]);
+	      double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
+	      tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
+	      points.push_back(point);
+	    }
+	  tf::Vector3 tree_center_pos;
+          double tree_radius;	 
+	  CircleDetection::circleFitting(points, tree_center_pos, tree_radius);
           if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_)
             {
               tf::Matrix3x3 rotation;
@@ -202,44 +218,4 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
   if (visualization_) {
     tree_db_.visualization(scan_msg->header);
   }
-}
-
-void TreeTracking::circleFitting(const sensor_msgs::LaserScan& tree_cluster, int target_tree_index, tf::Vector3& tree_center_location, double& tree_radius)
-{
-  double val[8] = {0,0,0,0,0,0,0,0};
-  for (unsigned int i = target_tree_index; !std::isnan(tree_cluster.ranges[i]) && i < tree_cluster.ranges.size(); i++) {
-    float theta = tree_cluster.angle_min + i * tree_cluster.angle_increment; //rad
-    float r = fabs(tree_cluster.ranges[i]); //m
-    double x = r * cos(theta);
-    double y = r * sin(theta);
-    val[0] += x; 
-    val[1] += y;
-    val[2] += x * x;
-    val[3] += y * y;
-    val[4] += x * y;
-    val[5] += -(x * x * x + x * y * y);
-    val[6] += -(x * x * y + y * y * y);
-    val[7] += 1;
-  }
-
-  for (unsigned int i = target_tree_index - 1; !std::isnan(tree_cluster.ranges[i]) && i > 0; i--) {
-    float theta = tree_cluster.angle_min + i * tree_cluster.angle_increment; //rad
-    float r = fabs(tree_cluster.ranges[i]); //m
-    double x = r * cos(theta);
-    double y = r * sin(theta);
-    val[0] += x;
-    val[1] += y;
-    val[2] += x * x;
-    val[3] += y * y;
-    val[4] += x * y;
-    val[5] += -(x * x * x + x * y * y);
-    val[6] += -(x * x * y + y * y * y);
-    val[7] += 1;
-  }
-
-  tf::Matrix3x3 m(val[2], val[4], val[0], val[4], val[3], val[1], val[0], val[1], val[7]);
-  tf::Vector3 v(val[5], val[6], -val[2] - val[3]);
-  tf::Vector3 solution = m.inverse() * v;
-  tree_center_location.setValue(solution.x() * -0.5, solution.y() * -0.5, 0);
-  tree_radius = std::sqrt(solution.x() * solution.x() / 4 + solution.y() * solution.y() / 4 - solution.z());
 }

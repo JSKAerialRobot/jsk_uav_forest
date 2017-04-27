@@ -109,7 +109,6 @@ void TreeDataBase::update()
 	cout << (*it)->getVote() << ", ";
       cout << endl;
     }
-
 }
 
 void TreeDataBase::visualization(std_msgs::Header header)

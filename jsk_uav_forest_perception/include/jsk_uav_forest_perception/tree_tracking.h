@@ -55,7 +55,6 @@ using namespace std;
 
 class TreeTracking
 {
-
 public:
   TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp);
   ~TreeTracking(){}

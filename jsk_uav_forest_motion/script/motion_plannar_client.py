@@ -61,6 +61,7 @@ class MotionPlannar:
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.cluster_num_min_ = rospy.get_param("~cluster_num_min", 10)
+        self.safe_zone_radius_ = rospy.get_param("~safe_zone", 1.0)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
         self.nav_z_pos_pgain_ = rospy.get_param("~nav_z_pos_pgain", 1.0)
         self.nav_yaw_pgain_ = rospy.get_param("~nav_yaw_pgain", 1.0)
@@ -74,6 +75,7 @@ class MotionPlannar:
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
+        self.target_obstalce_ignore_maximum_radius_ = rospy.get_param("~target_obstacle_ignore_maximum_radius", 1.25)
 
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -125,10 +127,16 @@ class MotionPlannar:
         self.start_planning_ = True
 
     def nearestObstacleSafetyDetection(self):
-        nearest_obstalce_distance_to_head_direction = 10000.0
-        nearest_obstalce_id = -1
-        ## get the nearest_obstalce_distance_to_head_direction from laser lines which is shorter than obstacle_ignore radius
-        ## obstacle_ignore radius should not be larger than 1m, since task2 it requires drone to arrive within 1m distance to red tree
+
+        ## If closed to the target tree within a certain distance, that is safe zone,
+        ## we do not need to the obstacle avoidance.
+        if np.linalg.norm(self.target_xy_local_pos_) < self.safe_zone_radius_:
+           #rospy.loginfo("safe zone, x :%f, y: %f", self.target_xy_local_pos_[0], self.target_xy_local_pos_[1])
+           return [False]
+        nearest_obstacle_distance_to_head_direction = 0.0
+        nearest_obstacle_distance_in_head_direction = 10000.0
+        nearest_obstacle_id = -1
+
         ## TODO: add changable obstacle_ignore radius, since 1m is too near for normal obstacle
         for i in range(0, len(self.tree_cluster_.ranges)):
 
@@ -144,15 +152,19 @@ class MotionPlannar:
 
                 if abs(self.tree_cluster_.ranges[i]) < self.drone_obstacle_ignore_maximum_radius_:
                     obstacle_angle = i * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
-                    obstalce_distance_to_head_direction = abs(self.tree_cluster_.ranges[i] * math.sin(obstacle_angle))
-                    if obstalce_distance_to_head_direction < nearest_obstalce_distance_to_head_direction:
-                        nearest_obstacle_distance_to_head_direction = obstalce_distance_to_head_direction
-                        nearest_obstalce_id = i
-        nearest_obstacle_angle = nearest_obstalce_id * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
-        ## nearest_obstalce_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstalce_id initial value is -1)
-        ## when potential nearest_obstacle makes nearest_obstalce_distance_to_head_direction shorter than safety_minimum_radius, then obstacle-avoidance needs consideration
-        if nearest_obstalce_id >= 0 and nearest_obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
-            rospy.logwarn("Meet obstacle: %f, [range] %f, [ang] %f", nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstalce_id], nearest_obstacle_angle / math.pi * 180.0)
+                    obstacle_distance_to_head_direction = abs(self.tree_cluster_.ranges[i] * math.sin(obstacle_angle))
+                    if obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
+                        ## the closest obstacle in head direction influence in earlist time
+                        ## todo: obstacles nearly passed (obstacle_angle > 90 deg), whether to consider or not
+                        obstacle_distance_in_head_direction = abs(self.tree_cluster_.ranges[i]) * math.cos(obstacle_angle)
+                        if obstacle_distance_in_head_direction < nearest_obstacle_distance_in_head_direction:
+                            nearest_obstacle_distance_in_head_direction = obstacle_distance_in_head_direction
+                            nearest_obstacle_distance_to_head_direction = obstacle_distance_to_head_direction
+                            nearest_obstacle_id = i
+        ## nearest_obstacle_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstacle_id initial value is -1)
+        if nearest_obstacle_id >= 0:
+            nearest_obstacle_angle = nearest_obstacle_id * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
+            rospy.logwarn("Meet obstacle: [x] %f, [y] %f, [range] %f, [ang] %f in phase: %s", nearest_obstacle_distance_in_head_direction, nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstacle_id], nearest_obstacle_angle / math.pi * 180.0, self.global_state_name_.data)
 
             return [True, nearest_obstacle_angle]
         else:
@@ -216,17 +228,21 @@ class MotionPlannar:
             return
 
         ## Judge whether requiring obstacles_avoidance
-        nearest_obstacle = self.nearestObstacleSafetyDetection()
-        if nearest_obstacle[0]:
-            ## if nearest obstacle is on drone right side, drone moves left
-            if nearest_obstacle[1] < 0.0:
-                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
-            ## if nearest obstacle is on drone left side, drone moves right
-            else:
-                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
-        ## if no obstacle influence, just follow the command from circle_motion_server
-        else:
+        ## when target is closer than threshold, skip obstalce avoidance
+        if np.linalg.norm(self.target_xy_local_pos_) < self.target_obstalce_ignore_maximum_radius_:
             vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
+        else:
+            nearest_obstacle = self.nearestObstacleSafetyDetection()
+            if nearest_obstacle[0]:
+                ## if nearest obstacle is on drone right side, drone moves left
+                if nearest_obstacle[1] < 0.0:
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
+                ## if nearest obstacle is on drone left side, drone moves right
+                else:
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
+            ## if no obstacle influence, just follow the command from circle_motion_server
+            else:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
 
         self.vel_pub_.publish(vel_msg)
         if self.use_dji_ == True:

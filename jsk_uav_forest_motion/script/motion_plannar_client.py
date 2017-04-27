@@ -75,6 +75,7 @@ class MotionPlannar:
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
+        self.target_obstalce_ignore_maximum_radius_ = rospy.get_param("~target_obstacle_ignore_maximum_radius", 1.25)
 
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -227,17 +228,21 @@ class MotionPlannar:
             return
 
         ## Judge whether requiring obstacles_avoidance
-        nearest_obstacle = self.nearestObstacleSafetyDetection()
-        if nearest_obstacle[0]:
-            ## if nearest obstacle is on drone right side, drone moves left
-            if nearest_obstacle[1] < 0.0:
-                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
-            ## if nearest obstacle is on drone left side, drone moves right
-            else:
-                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
-        ## if no obstacle influence, just follow the command from circle_motion_server
-        else:
+        ## when target is closer than threshold, skip obstalce avoidance
+        if np.linalg.norm(self.target_xy_local_pos_) < self.target_obstalce_ignore_maximum_radius_:
             vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
+        else:
+            nearest_obstacle = self.nearestObstacleSafetyDetection()
+            if nearest_obstacle[0]:
+                ## if nearest obstacle is on drone right side, drone moves left
+                if nearest_obstacle[1] < 0.0:
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, 0.5]), self.target_z_pos_, self.target_yaw_)
+                ## if nearest obstacle is on drone left side, drone moves right
+                else:
+                    vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -0.5]), self.target_z_pos_, self.target_yaw_)
+            ## if no obstacle influence, just follow the command from circle_motion_server
+            else:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, self.target_xy_local_pos_, self.target_z_pos_, self.target_yaw_)
 
         self.vel_pub_.publish(vel_msg)
         if self.use_dji_ == True:

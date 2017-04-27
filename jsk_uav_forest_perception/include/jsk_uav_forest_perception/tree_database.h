@@ -33,75 +33,78 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#ifndef TREE_TRACKING_H_
-#define TREE_TRACKING_H_
+#ifndef TREE_DATABASE_H_
+#define TREE_DATABASE_H_
 
 /* ros */
 #include <ros/ros.h>
 
 /* ros msg/srv */
-#include <sensor_msgs/CameraInfo.h>
-#include <geometry_msgs/Vector3Stamped.h>
 #include <sensor_msgs/LaserScan.h>
-#include <nav_msgs/Odometry.h>
-#include <std_msgs/Bool.h>
 #include <tf/transform_broadcaster.h>
+#include <std_srvs/Empty.h>
 #include <visualization_msgs/MarkerArray.h>
 
-/* tree labeling */
-#include <jsk_uav_forest_perception/tree_database.h>
+/* uitls */
+#include <vector>
+#include <sstream>
+#include <algorithm>
 
 using namespace std;
 
-class TreeTracking
+class TreeHandle
 {
 public:
-  TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp);
-  ~TreeTracking(){}
+  TreeHandle(): pos_(0,0,0), vote_(0), radius_(0) {}
+  TreeHandle(ros::NodeHandle nh, ros::NodeHandle nhp, tf::Vector3 pos);
+  ~TreeHandle(){}
+  
+  boost::shared_ptr<TreeHandle> getHandle() { return boost::shared_ptr<TreeHandle>(this); }
+  void updatePos(const tf::Vector3& pos, bool lpf = true);
+  void setRadius(double radius, bool lpf = true);
+  const double getRadius(){ return radius_; }
+  const tf::Vector3 getPos() { return pos_; }
+  inline int getVote() { return vote_; }
 
 private:
   ros::NodeHandle nh_, nhp_;
 
-  ros::Subscriber sub_vision_detection_;
-  ros::Subscriber sub_uav_odom_;
-  ros::Subscriber sub_laser_scan_;
+  double filter_rate_;
 
-  ros::Publisher pub_stop_vision_detection_;
-  ros::Publisher pub_tree_location_;
-  ros::Publisher pub_tree_global_location_;
-
-  string uav_odom_topic_name_;
-  string laser_scan_topic_name_;
-  string vision_detection_topic_name_;
-  string tree_location_topic_name_;
-  string tree_global_location_topic_name_;
-  string tree_cluster_topic_name_;
-  string stop_detection_topic_name_;
-
-  double uav_tilt_thre_;
-  double search_radius_;
-  bool only_target_;
-  bool verbose_;
-  bool visualization_;
-  bool tree_circle_fitting_;
-
-  TreeDataBase tree_db_;
-  TreeHandlePtr target_tree_;
-
-  tf::Vector3 search_center_;
-  tf::Vector3 uav_odom_;
-  float uav_roll_, uav_pitch_, uav_yaw_;
-
-  //temp
-  double tree_radius_max_, tree_radius_min_;
-
-  void subscribe();
-  void unsubscribe();
-
-  void visionDetectionCallback(const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg);
-  void laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_msg);
-  void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
-  void circleFitting(const sensor_msgs::LaserScan& tree_cluster, int target_tree_index, tf::Vector3& tree_center_location, double& tree_radius);
+  tf::Vector3 pos_;
+  double radius_;
+  int vote_;
 };
 
+typedef boost::shared_ptr<TreeHandle>  TreeHandlePtr;
+
+bool operator>(const TreeHandlePtr& left, const TreeHandlePtr& right);
+
+class TreeDataBase
+{
+public:
+  TreeDataBase(ros::NodeHandle nh, ros::NodeHandle nhp);
+  ~TreeDataBase(){}
+
+  void add(const TreeHandlePtr new_tree);
+  bool updateSingleTree(const tf::Vector3& tree_pos, const double& tree_radius, const bool only_target = false);
+
+  void update();
+  void visualization(std_msgs::Header header);
+private:
+  ros::NodeHandle nh_, nhp_;
+
+  /* ros param */
+  double min_distance_; /* the min distance between two tree  */
+  double max_radius_;  /* the max radius to use for tree update  */
+  int display_num_; /* the number of tree to display */
+  bool verbose_;
+  bool visualization_;
+  string visualization_marker_topic_name_;
+
+  ros::Publisher pub_visualization_marker_;
+
+  /* the set for trees */
+  vector<TreeHandlePtr> trees_;
+};
 #endif

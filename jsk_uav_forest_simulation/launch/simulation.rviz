@@ -4,10 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
         - /Image1
-        - /TF1
-        - /TF1/Status1
         - /TF1/Frames1
         - /LaserScan1
         - /PointStamped1
@@ -85,8 +82,6 @@ Visualization Manager:
           Value: true
         map:
           Value: true
-        scanmatcher_frame:
-          Value: true
         world:
           Value: false
       Marker Scale: 1
@@ -96,17 +91,15 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
-          scanmatcher_frame:
-            {}
-        world:
-          base_footprint:
-            base_stabilized:
-              base_link:
-                front_cam_link:
-                  front_cam_optical_frame:
+          world:
+            base_footprint:
+              base_stabilized:
+                base_link:
+                  front_cam_link:
+                    front_cam_optical_frame:
+                      {}
+                  laser0_frame:
                     {}
-                laser0_frame:
-                  {}
       Update Interval: 0
       Value: true
     - Class: rviz/Axes
@@ -152,9 +145,17 @@ Visualization Manager:
       Enabled: true
       History Length: 1
       Name: PointStamped
-      Radius: 0.5
+      Radius: 0.300000012
       Topic: /tree_location
       Unreliable: false
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /visualization_marker
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Queue Size: 100
       Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
@@ -165,6 +166,40 @@ Visualization Manager:
       Topic: /map
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_cam_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        front_cam_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        laser0_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -188,20 +223,25 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0
-      Class: rviz/TopDownOrtho
+      Class: rviz/Orbit
+      Distance: 17.6753998
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
+      Focal Point:
+        X: -0.906306982
+        Y: 0.415237993
+        Z: -0.00100707996
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.0500000007
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 61.6962051
+      Pitch: 0.499797225
       Target Frame: firefly/base_link
-      Value: TopDownOrtho (rviz)
-      X: -0.906307459
-      Y: 0.415237695
+      Value: Orbit (rviz)
+      Yaw: 3.77318287
     Saved: ~
 Window Geometry:
   Displays:

@@ -172,8 +172,6 @@ namespace vision_detection
       object_direction.vector.z = scan_msg->ranges[target_tree_index]; //distance
       pub_target_direction_.publish(object_direction);
 
-      /* stop the subscribe if necessary */
-      if(detect_once_) unsubscribe();
     }
 
     void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& camera_info)

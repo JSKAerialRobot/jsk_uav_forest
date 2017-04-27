@@ -18,6 +18,9 @@
     <param name="laser_scan_topic_name" value="/scan_clustered" />
     <param name="uav_odom_topic_name" value="/ground_truth/state" if="$(arg simulation)"/>
     <param name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" unless="$(arg simulation)"/>
-    <param name="verbose" value="false" />
+    <param name="uav_tilt_thre" value="0.07" />
+    <param name="only_target" value="false" />
+    <param name="verbose" value="true" />
+    <param name="visualization" value="true" />
     </node>
 </launch>

@@ -41,7 +41,6 @@
   <run_depend>laser_filters</run_depend>
   <run_depend>filters</run_depend>
   <run_depend>tf</run_depend>
-  <run_depend>gmapping</run_depend>
 
   <export>
     <jsk_uav_forest_perception plugin="${prefix}/vision_detection_plugins.xml"/>

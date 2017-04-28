@@ -4,8 +4,8 @@
   <arg name="circle_motion_times" default="1" />
   <arg name="rqt_gui" default="False" />
   <arg name="use_mapping" default="False" />
-  <arg name="turn_before_return" default="True" />
-  <arg name="plannar" default="False" />
+  <arg name="turn_before_return" default="False" />
+  <arg name="plannar" default="True" />
 
   <!-- bringup -->
   <include file="$(find jsk_uav_forest_common)/launch/m100_bringup.launch" >

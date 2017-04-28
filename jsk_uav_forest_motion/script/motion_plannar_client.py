@@ -177,6 +177,11 @@ class MotionPlannar:
             return
 
         delta_yaw = target_yaw - self.uav_yaw_
+        if delta_yaw > math.pi:
+            delta_yaw -= math.pi * 2
+        elif delta_yaw < -math.pi:
+            delta_yaw += math.pi * 2
+
         current_vel = np.array([self.odom_.twist.twist.linear.x, self.odom_.twist.twist.linear.y, self.odom_.twist.twist.linear.z])
         if np.linalg.norm(delta_pos) < self.nav_pos_convergence_thresh_ and abs(delta_yaw) < self.nav_yaw_convergence_thresh_ and np.linalg.norm(current_vel) < self.nav_vel_convergence_thresh_:
             return True
@@ -196,22 +201,37 @@ class MotionPlannar:
     #go pos function: z and yaw are always in global frame
     def goPos(self, frame, target_xy, target_z, target_yaw):
         if frame == self.GLOBAL_FRAME_:
-            delta_xy = self.cvtGlobaltoLocal(target_xy)
+            rot_mat = np.array([[math.cos(self.uav_yaw_), math.sin(self.uav_yaw_)],[-math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
+            delta_xy = np.dot(rot_mat, target_xy - self.uav_xy_pos_)
         elif frame == self.LOCAL_FRAME_:
             delta_xy = target_xy
         else:
             return
+
         delta_z = target_z - self.uav_z_pos_
+
         delta_yaw = target_yaw - self.uav_yaw_
+        if delta_yaw > math.pi:
+            delta_yaw -= math.pi * 2
+        elif delta_yaw < -math.pi:
+            delta_yaw += math.pi * 2
+
         nav_xy_vel = delta_xy * self.nav_xy_pos_pgain_
         nav_z_vel = delta_z * self.nav_z_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
+
         nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
         vel_msg = Twist()
         vel_msg.linear.x = nav_xy_vel[0]
         vel_msg.linear.y = nav_xy_vel[1]
         vel_msg.linear.z = nav_z_vel
         vel_msg.angular.z = nav_yaw_vel
+        #for debug
+        self.target_xy_pos_ = target_xy
+        self.target_z_pos_ = target_z
+        self.target_yaw_ = target_yaw
+        self.target_frame_ = frame
+
         return vel_msg
 
     def controlCallback(self, event):

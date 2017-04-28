@@ -294,9 +294,9 @@ class CircleMotion:
             else:
                 if self.turn_before_return_ == False:
                     #use local frame
-                    self.setGoal(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_pos_, self.takeoff_height_, self.initial_yaw_)
+                    self.setGoal(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_local_pos_, self.takeoff_height_, self.initial_yaw_)
                 else:
-                    self.setGoal(self.GLOVAL_FRAME_, self.initial_xy_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.turn_uav_yaw_ + math.pi)
+                    self.setGoal(self.GLOBAL_FRAME_, self.initial_xy_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.turn_uav_yaw_ + math.pi)
     #end navigation
 
     #state machine

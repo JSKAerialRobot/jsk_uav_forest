@@ -9,9 +9,10 @@ import numpy as np
 from dji_sdk.dji_drone import DJIDrone
 from geometry_msgs.msg import Twist, Quaternion, PointStamped, Vector3Stamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import String, Float32, Bool
+from std_msgs.msg import String, Float32, Bool, ColorRGBA
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool, SetBoolResponse
+from jsk_rviz_plugins.msg import OverlayText
 
 class CircleMotion:
 
@@ -49,7 +50,7 @@ class CircleMotion:
         self.TURN_STATE_ = 6
         self.RETURN_HOME_STATE_ = 7
         self.state_machine_ = self.INITIAL_STATE_
-        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "turn", "return home"]
+        self.state_name_ = ["initial", "takeoff", "tree_detection_start", "approaching_to_tree", "circle_motion", "finish_circle_motion", "turn", "return_home"]
         self.tree_detection_wait_count_ = 0
         self.circle_motion_count_ = 0
 
@@ -69,6 +70,7 @@ class CircleMotion:
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
         self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
+        self.state_visualization_pub_topic_name_ = rospy.get_param("state_visualization_pub_topic_name", "overlay_text")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
         self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
@@ -92,6 +94,7 @@ class CircleMotion:
         self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
+        self.visualization_ = rospy.get_param("~visualization", True)
         
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
@@ -99,6 +102,7 @@ class CircleMotion:
         self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
         self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
         self.tree_detection_start_pub_ = rospy.Publisher(self.tree_detection_start_pub_topic_name_, Bool, queue_size = 10)
+        self.state_visualization_pub_ = rospy.Publisher(self.state_visualization_pub_topic_name_, OverlayText, queue_size = 10)
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         self.task_start_service_ = rospy.Service(self.task_start_service_name_, SetBool, self.taskStartCallback)
@@ -332,6 +336,19 @@ class CircleMotion:
 
     #publication
         self.state_machine_pub_.publish(self.state_name_[self.state_machine_])
+        if self.visualization_ == True:
+            text_msg = OverlayText()            
+            text_msg.width = 500
+            text_msg.height = 30
+            text_msg.left = 10
+            text_msg.top = 10
+            text_msg.text_size = 20
+            text_msg.line_width = 1
+            text_msg.font = "DejaVu Sans Mono"
+            text_msg.text = self.state_name_[self.state_machine_]
+            text_msg.fg_color = ColorRGBA(25 / 255.0, 1.0, 240.0 / 255.0, 1.0)
+            text_msg.bg_color = ColorRGBA(0.0, 0.0, 0.0, 0.2)
+            self.state_visualization_pub_.publish(text_msg)
 
         target_pos_msg = Odometry()
         target_pos_msg.header = self.odom_.header

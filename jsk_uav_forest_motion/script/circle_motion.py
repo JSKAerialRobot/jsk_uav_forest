@@ -50,7 +50,6 @@ class CircleMotion:
         self.RETURN_HOME_STATE_ = 7
         self.state_machine_ = self.INITIAL_STATE_
         self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "turn", "return home"]
-        self.tree_detection_wait_count_ = 0
         self.circle_motion_count_ = 0
 
         self.odom_update_flag_ = False
@@ -62,7 +61,9 @@ class CircleMotion:
         self.uav_accumulated_yaw_ = 0.0
 
         self.cycle_count_ = 0
+        
         self.tree_xy_pos_ = np.zeros(2)
+        self.tree_pos_update_flag_ = False
 
         self.task_start_ = False;
 
@@ -89,7 +90,6 @@ class CircleMotion:
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
         self.circle_motion_times_ = rospy.get_param("~circle_motion_times", 1)
         self.circle_motion_height_step_ = rospy.get_param("~circle_motion_height_step_", 0.5)
-        self.tree_detection_wait_ = rospy.get_param("~tree_detection_wait", 1.0)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
         
@@ -126,6 +126,7 @@ class CircleMotion:
         self.tree_detection_start_pub_.publish(msg)
 
     def treeLocationCallback(self, msg):
+        self.tree_pos_update_flag_ = True
         self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
 
     def taskStartCallback(self, req):
@@ -288,8 +289,7 @@ class CircleMotion:
                self.state_machine_ = self.TREE_DETECTION_START_STATE_
 
         elif self.state_machine_ == self.TREE_DETECTION_START_STATE_:
-            self.tree_detection_wait_count_ += 1
-            if self.tree_detection_wait_count_ > self.control_rate_ * self.tree_detection_wait_:
+            if self.tree_pos_update_flag_ == True:
                 self.state_machine_ = self.APPROACHING_TO_TREE_STATE_
                 rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
                 self.initial_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_pos_) + self.uav_xy_pos_

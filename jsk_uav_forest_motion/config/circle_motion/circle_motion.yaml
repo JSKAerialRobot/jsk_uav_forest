@@ -15,4 +15,3 @@ nav_vel_converge0.8_thresh : 1.0
 circle_radius : 1.0
 circle_y_vel : 0.2
 circle_motion_height_step : 0.5
-tree_detection_wait : 1.0

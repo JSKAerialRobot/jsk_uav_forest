@@ -2,7 +2,7 @@
 <launch>
   <arg name="headless" default="false" />
   <arg name="image_name" default="/camera/image" />
-  <arg name="plugin_name" default="IndependentHsvFilter" />
+  <arg name="plugin_name" default="ConditionalHsvFilter" />
 
   <!-- color region detector -->
   <node pkg="jsk_uav_forest_perception" type="vision_detection_node" name="vision_detection"
@@ -13,7 +13,7 @@
     <param name="verbose" value="true"/>
     <param name="detect_once" value="true"/>
     <param name="camera_offset_x" value="0.0" />
-    <param name="first_detection_depth_thre" value="9.0" /> <!-- should be 9[m] -->
+    <param name="first_detection_depth_thre" value="12.0" /> <!-- should be 9[m] -->
     <param name="plugin_name" value="vision_detection/$(arg plugin_name)" />
     <rosparam file="$(find jsk_uav_forest_perception)/param/$(arg plugin_name).yaml"/>
   </node>

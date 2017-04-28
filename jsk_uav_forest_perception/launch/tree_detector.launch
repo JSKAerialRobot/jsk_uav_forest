@@ -20,7 +20,7 @@
     <param name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" unless="$(arg simulation)"/>
     <param name="uav_tilt_thre" value="0.07" />
     <param name="only_target" value="false" />
-    <param name="verbose" value="true" />
+    <param name="verbose" value="false" />
     <param name="visualization" value="true" />
     </node>
 </launch>

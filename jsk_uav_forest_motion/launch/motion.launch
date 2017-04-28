@@ -5,6 +5,7 @@
   <arg name="task_kind" default="1" />
   <arg name="rqt_gui" default="False" />
   <arg name="circle_motion_times" default="1" />
+  <arg name="turn_before_return" default="True" />
 
   ##### Perception Node #####
   <include file="$(find jsk_uav_forest_perception)/launch/tree_detector.launch">
@@ -17,6 +18,7 @@
     <param name="task_kind" value="$(arg task_kind)" />
     <param name="circle_motion_times" value="$(arg circle_motion_times)" />
     <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)" if="$(arg use_dji)"/>
+    <param name="turn_before_return" value="$(arg turn_before_return)" />
     <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
   </node>
  

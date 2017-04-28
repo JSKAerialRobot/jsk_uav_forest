@@ -15,12 +15,7 @@ class OdomGenerator:
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "/dji_sdk/odometry")
         self.lidar_sub_topic_name_ = rospy.get_param("~lidar_sub_topic_name", "/guidance/ultrasonic")
         self.guidance_vel_sub_topic_name_ = rospy.get_param("~guidance_vel_topic_name", "/guidance/velocity")
-        self.uav_odom_pub_topic_name_ = rospy.get_param("~uav_odom_pub_topic_name", "modified_odom")        
-        self.uav_odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.uavOdomCallback)
-        self.uav_odom_pub_ = rospy.Publisher(self.uav_odom_pub_topic_name_, Odometry, queue_size = 10)
-        self.lidar_sub_ = rospy.Subscriber(self.lidar_sub_topic_name_, LaserScan, self.lidarCallback)
-        self.guidance_vel_sub_ = rospy.Subscriber(self.guidance_vel_sub_topic_name_, Vector3Stamped, self.guidanceVelCallback)
-        
+
         self.use_lidar_ = rospy.get_param("~use_lidar", True)
         self.lidar_tc_ = rospy.get_param("~lidar_tc", 0.5) #0.0~1.0
         self.lidar_noise_cut_thresh_ = rospy.get_param("~lidar_noise_cut_thresh", 0.5)
@@ -42,7 +37,13 @@ class OdomGenerator:
         self.uav_lidar_old_stamp_ = rospy.get_rostime()
 
         self.guidance_vel_z_ = 0.0
-      
+
+        self.uav_odom_pub_topic_name_ = rospy.get_param("~uav_odom_pub_topic_name", "modified_odom")
+        self.uav_odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.uavOdomCallback)
+        self.uav_odom_pub_ = rospy.Publisher(self.uav_odom_pub_topic_name_, Odometry, queue_size = 10)
+        self.lidar_sub_ = rospy.Subscriber(self.lidar_sub_topic_name_, LaserScan, self.lidarCallback)
+        self.guidance_vel_sub_ = rospy.Subscriber(self.guidance_vel_sub_topic_name_, Vector3Stamped, self.guidanceVelCallback)
+
     def guidanceVelCallback(self, msg):
         self.guidance_vel_z_ = -msg.vector.z #minus is necessary due to guidance sdk
 

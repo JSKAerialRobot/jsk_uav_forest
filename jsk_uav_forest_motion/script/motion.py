@@ -74,6 +74,7 @@ class CircleMotion:
         self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
         self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
         self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
+        self.tracking_control_service_name_ = rospy.get_param("~tracking_control_service_name", "/tracking_control")
 
         self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
         self.control_rate_ = rospy.get_param("~control_rate", 20)
@@ -386,11 +387,21 @@ class CircleMotion:
                     self.turn_uav_xy_pos_ = self.uav_xy_pos_
                     self.turn_uav_yaw_ = self.uav_yaw_
                     self.state_machine_ = self.TURN_STATE_
+
+                    # stop tree tracking if necessary
+                    if self.turn_before_return_:
+                        rospy.wait_for_service(self.tracking_control_service_name_)
+                    try:
+                        stop_tracking = rospy.ServiceProxy(self.tracking_control_service_name_, SetBool)
+                        res = stop_tracking(False)
+                    except rospy.ServiceException, e:
+                        print "Service call failed: %s"%e
                 else:
                     self.state_machine_ = self.RETURN_HOME_STATE_
         elif self.state_machine_ == self.TURN_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.state_machine_ = self.RETURN_HOME_STATE_
+                # TODO: stop mapping and tree database update
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
             pass
         #end state machine

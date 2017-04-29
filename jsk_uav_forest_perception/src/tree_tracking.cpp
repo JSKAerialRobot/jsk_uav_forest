@@ -49,6 +49,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("tree_location_topic_name", tree_location_topic_name_, string("tree_location"));
   nhp_.param("tree_global_location_topic_name", tree_global_location_topic_name_, string("tree_global_location"));
   nhp_.param("stop_detection_topic_name", stop_detection_topic_name_, string("/detection_start"));
+  nhp_.param("tracking_control_srv_name", tracking_control_srv_name_, string("/tracking_control"));
 
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17); //[rad] = 10[deg]
   nhp_.param("search_radius", search_radius_, 10.0); // 12[m]
@@ -57,12 +58,12 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("visualization", visualization_, false);
   nhp_.param("tree_circle_fitting", tree_circle_fitting_, true);
 
-  //temp
   nhp_.param("tree_radius_max", tree_radius_max_, 0.3);
   nhp_.param("tree_radius_min", tree_radius_min_, 0.1);
 
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
+  tracking_control_srv_ = nh_.advertiseService(tracking_control_srv_name_, &TreeTracking::trackingControlCallback, this);
 
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
@@ -100,7 +101,6 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   sub_vision_detection_.shutdown(); //stop
 
 }
-
 
 void TreeTracking::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
 {
@@ -218,4 +218,20 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
   if (visualization_) {
     tree_db_.visualization(scan_msg->header);
   }
+}
+
+bool TreeTracking::trackingControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
+{
+  if(req.data)
+    {
+      sub_laser_scan_ = nh_.subscribe(laser_scan_topic_name_, 1, &TreeTracking::laserScanCallback, this); //restart
+      ROS_INFO("restart tree tracking");
+    }
+  else
+    {
+      sub_laser_scan_.shutdown(); //stop
+      ROS_INFO("stop tree tracking");
+    }
+
+  return true;
 }

@@ -5,6 +5,7 @@
   <arg name="task_kind" default="1" />
   <arg name="rqt_gui" default="False" />
   <arg name="circle_motion_times" default="1" />
+  <arg name="target_num" default="1" />
   <arg name="turn_before_return" default="True" />
   <arg name="do_avoidance" default="False" />
 
@@ -18,6 +19,7 @@
   <node pkg="jsk_uav_forest_motion" type="motion.py" name="motion" output="screen" args="$(arg use_dji)">
     <param name="task_kind" value="$(arg task_kind)" />
     <param name="do_avoidance" value="$(arg do_avoidance)" />
+    <param name="target_num" value="$(arg target_num)" />
     <param name="circle_motion_times" value="$(arg circle_motion_times)" />
     <param name="turn_before_return" value="$(arg turn_before_return)" />
     <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)"/>

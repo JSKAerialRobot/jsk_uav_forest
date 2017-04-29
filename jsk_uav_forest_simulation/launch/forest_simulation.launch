@@ -13,6 +13,7 @@
   <arg name="turn_before_return" default="False" />
   <arg name="collision" default="false" />
   <arg name="do_mapping" default="true" />
+  <arg name="target_num" default="1" />
 
   <arg name="start_x" value="-8"/>
   <arg name="start_y" value="0" unless="$(arg collision)"/>
@@ -46,6 +47,7 @@
     <arg name="rqt_gui" value="$(arg rqt_gui)" />
     <arg name="do_avoidance" value="$(arg do_avoidance)" />
     <arg name="turn_before_return" value="$(arg turn_before_return)" />
+    <arg name="target_num" value="$(arg target_num)" />
   </include>
 
   <!-- 2D Mapping -->

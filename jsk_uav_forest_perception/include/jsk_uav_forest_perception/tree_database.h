@@ -58,7 +58,7 @@ public:
   TreeHandle(): pos_(0,0,0), vote_(0), radius_(0) {}
   TreeHandle(ros::NodeHandle nh, ros::NodeHandle nhp, tf::Vector3 pos);
   ~TreeHandle(){}
-  
+
   boost::shared_ptr<TreeHandle> getHandle() { return boost::shared_ptr<TreeHandle>(this); }
   void updatePos(const tf::Vector3& pos, bool lpf = true);
   void setRadius(double radius, bool lpf = true);
@@ -91,13 +91,20 @@ public:
 
   void update();
   void visualization(std_msgs::Header header);
+
+  int validTreeNum()
+  {
+    return (trees_.size()>valid_num_)?valid_num_:trees_.size();
+  }
+
+  inline void getTrees(vector<TreeHandlePtr>& trees) { trees = trees_; }
 private:
   ros::NodeHandle nh_, nhp_;
 
   /* ros param */
   double min_distance_; /* the min distance between two tree  */
   double max_radius_;  /* the max radius to use for tree update  */
-  int display_num_; /* the number of tree to display */
+  int valid_num_; /* the number of valid tree to  */
   bool verbose_;
   bool visualization_;
   string visualization_marker_topic_name_;

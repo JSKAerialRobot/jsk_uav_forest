@@ -12,8 +12,9 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String, Float32, Bool
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool, SetBoolResponse
+from std_srvs.srv import Trigger, TriggerResponse
 
-class CircleMotion:
+class ForestMotion:
 
     def init(self):
         if sys.argv[1] == 'True':
@@ -51,6 +52,7 @@ class CircleMotion:
         self.state_machine_ = self.INITIAL_STATE_
         self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "turn", "return home"]
         self.circle_motion_count_ = 0
+        self.target_count_ = 0
 
         self.odom_update_flag_ = False
         self.uav_xy_pos_ = np.zeros(2)
@@ -64,7 +66,7 @@ class CircleMotion:
         self.tree_xy_pos_ = np.zeros(2)
         self.tree_pos_update_flag_ = False
 
-        self.task_start_ = False;
+        self.task_start_ = False
 
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
@@ -75,9 +77,13 @@ class CircleMotion:
         self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
         self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
         self.tracking_control_service_name_ = rospy.get_param("~tracking_control_service_name", "/tracking_control")
+        self.update_target_tree_service_name_ = rospy.get_param("~update_target_tree_service_name", "/update_target_tree")
+        self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
 
-        self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
+
         self.control_rate_ = rospy.get_param("~control_rate", 20)
+        self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
+        self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
         self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
         self.nav_z_pos_pgain_ = rospy.get_param("~nav_z_pos_pgain", 1.0)
@@ -90,20 +96,26 @@ class CircleMotion:
         self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
         self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
-        self.circle_motion_times_ = rospy.get_param("~circle_motion_times", 1)
-        self.circle_motion_height_step_ = rospy.get_param("~circle_motion_height_step_", 0.5)
-        self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
-        self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
-
-        self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
-        self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.cluster_num_min_ = rospy.get_param("~cluster_num_min", 10)
         self.safe_zone_radius_ = rospy.get_param("~safe_zone", 1.0)
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
 
-        self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
+        self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
+
+        ## task3 different
+        self.circle_motion_times_ = 1
+        self.circle_motion_height_step_ = 0
+        if self.task_kind_ == 2:
+            self.circle_motion_times_ = rospy.get_param("~circle_motion_times", 1)
+            self.circle_motion_height_step_ = rospy.get_param("~circle_motion_height_step_", 0.5)
+
+        self.target_num_ = 1
+        if self.task_kind_ == 3:
+            self.target_num_ = rospy.get_param("~target_num", 2)
+            self.turn_before_return_ = True
+            self.do_avoidance_ = True
 
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
         self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
@@ -113,6 +125,8 @@ class CircleMotion:
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         self.tree_cluster_sub_ = rospy.Subscriber(self.tree_cluster_sub_topic_name_, LaserScan, self.treeClusterCallback)
         self.task_start_service_ = rospy.Service(self.task_start_service_name_, SetBool, self.taskStartCallback)
+
+        self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
     def odomCallback(self, msg):
         self.odom_ = msg
@@ -281,7 +295,6 @@ class CircleMotion:
                             nearest_obstacle_distance_in_head_direction = obstacle_distance_in_head_direction
                             nearest_obstacle_distance_to_head_direction = obstacle_distance_to_head_direction
                             nearest_obstacle_id = i
-        ## nearest_obstacle_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstacle_id initial value is -1)
         if nearest_obstacle_id >= 0:
             nearest_obstacle_angle = nearest_obstacle_id * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
             rospy.logwarn("Meet obstacle: [%.3f, %.3f] -> %.3f[m], %.3f[deg] in phase: %s", nearest_obstacle_distance_in_head_direction, nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstacle_id], nearest_obstacle_angle / math.pi * 180.0, self.state_name_[self.state_machine_])
@@ -319,14 +332,14 @@ class CircleMotion:
                                  self.takeoff_height_,
                                  self.circle_initial_yaw_)
         if self.state_machine_ == self.TURN_STATE_:
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.turn_uav_xy_pos_, self.takeoff_height_, self.turn_uav_yaw_ + math.pi)
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.turn_uav_xy_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
         if self.state_machine_ == self.RETURN_HOME_STATE_:
             if self.turn_before_return_ == False:
                 #use local frame
                 vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_local_pos_, self.takeoff_height_, self.initial_yaw_)
             else:
-                #use global frame
-                vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.turn_uav_yaw_ + math.pi)
+                #use global fram
+                vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
 
         # obstacle avoidance
         obstacle = self.obstacleDetection()
@@ -366,7 +379,7 @@ class CircleMotion:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 if self.task_kind_ == 1:
                     self.state_machine_ = self.RETURN_HOME_STATE_
-                elif self.task_kind_ == 2:
+                elif self.task_kind_ > 1:
                     self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
                     self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
                     self.circle_initial_yaw_ = self.uav_yaw_
@@ -374,23 +387,42 @@ class CircleMotion:
 
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_accumulated_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
-                self.circle_motion_count_ += 1
                 self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
-                if self.circle_motion_count_ == self.circle_motion_times_:
+                if self.task_kind_ == 2:
+                    self.circle_motion_count_ += 1
+                    if self.circle_motion_count_ == self.circle_motion_times_:
+                        self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
+                else:
                     self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
 
         elif self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+
+                # task3 special process
+                self.target_count_ += 1
+                if self.task_kind_ == 3 and self.target_count_ < self.target_num_:
+                    rospy.wait_for_service(self.update_target_tree_service_name_)
+                    try:
+                        update_target_tree = rospy.ServiceProxy(self.update_target_tree_service_name_, Trigger)
+                        res = update_target_tree()
+
+                        if res.success:
+                            time.sleep(0.5)
+                            self.state_machine_ = self.TREE_DETECTION_START_STATE_
+                            self.tree_pos_update_flag_ = False
+                            return
+                    except rospy.ServiceException, e:
+                        print "Service call failed: %s"%e
+
                 if self.turn_before_return_ == True:
                     rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
                     self.final_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_pos_) + self.uav_xy_pos_
                     self.turn_uav_xy_pos_ = self.uav_xy_pos_
-                    self.turn_uav_yaw_ = self.uav_yaw_
+                    #self.turn_uav_yaw_ = self.uav_yaw_
                     self.state_machine_ = self.TURN_STATE_
 
                     # stop tree tracking if necessary
-                    if self.turn_before_return_:
-                        rospy.wait_for_service(self.tracking_control_service_name_)
+                    rospy.wait_for_service(self.tracking_control_service_name_)
                     try:
                         stop_tracking = rospy.ServiceProxy(self.tracking_control_service_name_, SetBool)
                         res = stop_tracking(False)
@@ -427,8 +459,8 @@ class CircleMotion:
 
 if __name__ == '__main__':
     try:
-        circle_motion = CircleMotion()
-        circle_motion.init()
+        forest_motion = ForestMotion()
+        forest_motion.init()
         rospy.spin()
     except rospy.ROSInterruptException:
         pass

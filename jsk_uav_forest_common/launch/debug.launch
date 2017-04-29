@@ -40,7 +40,7 @@
     <param name="only_target" value="false" />
     <param name="tree_radius_max" value="0.4" /> <!-- max raidus for tree circle fitting-->
     <param name="search_radius" value="10.0" />
-    <param name="display_num" value="5" />
+    <param name="valid_num" value="5" />
     <param name="verbose" value="false" />
     <param name="uav_tilt_thre" value="0.07" />
     <param name="visualization" value="true" />

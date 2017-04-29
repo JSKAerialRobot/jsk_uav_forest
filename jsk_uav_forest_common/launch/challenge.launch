@@ -3,8 +3,9 @@
   <arg name="task_kind" default="2" />
   <arg name="circle_motion_times" default="1" />
   <arg name="rqt_gui" default="False" />
-  <arg name="use_mapping" default="False" />
-  <arg name="turn_before_return" default="True" />
+  <arg name="do_mapping" default="False" />
+  <arg name="turn_before_return" default="False" />
+  <arg name="do_avoidance" default="True" />
 
   <!-- bringup -->
   <include file="$(find jsk_uav_forest_common)/launch/m100_bringup.launch" >
@@ -31,10 +32,11 @@
     <arg name="task_kind" value="$(arg task_kind)" />
     <arg name="circle_motion_times" value="$(arg circle_motion_times)" />
     <arg name="rqt_gui" value="$(arg rqt_gui)" />
-    <arg name="turn_before_return" value="True" />
+    <arg name="turn_before_return" value="$(arg turn_before_return)" />
+    <arg name="do_avoidance" value="$(arg do_avoidance)" />
   </include>
 
   <!-- 2D SLAM -->
-  <include file="$(find jsk_uav_forest_common)/launch/2d_mapping.launch" if="$(arg use_mapping)" />
+  <include file="$(find jsk_uav_forest_common)/launch/2d_mapping.launch" if="$(arg do_mapping)" />
 
 </launch>

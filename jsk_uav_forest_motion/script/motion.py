@@ -59,9 +59,8 @@ class CircleMotion:
         self.uav_yaw_old_ = 0.0
         self.uav_yaw_overflow_ = 0
         self.uav_accumulated_yaw_ = 0.0
+        self.tree_cluster_ = LaserScan()
 
-        self.cycle_count_ = 0
-        
         self.tree_xy_pos_ = np.zeros(2)
         self.tree_pos_update_flag_ = False
 
@@ -73,8 +72,11 @@ class CircleMotion:
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
         self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
+        self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
         self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
+        self.tracking_control_service_name_ = rospy.get_param("~tracking_control_service_name", "/tracking_control")
 
+        self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
@@ -92,7 +94,15 @@ class CircleMotion:
         self.circle_motion_height_step_ = rospy.get_param("~circle_motion_height_step_", 0.5)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
         self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
-        
+
+        self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
+        self.control_rate_ = rospy.get_param("~control_rate", 20)
+        self.cluster_num_min_ = rospy.get_param("~cluster_num_min", 10)
+        self.safe_zone_radius_ = rospy.get_param("~safe_zone", 1.0)
+        self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
+        self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
+        self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
+
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
@@ -101,6 +111,7 @@ class CircleMotion:
         self.tree_detection_start_pub_ = rospy.Publisher(self.tree_detection_start_pub_topic_name_, Bool, queue_size = 10)
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
+        self.tree_cluster_sub_ = rospy.Subscriber(self.tree_cluster_sub_topic_name_, LaserScan, self.treeClusterCallback)
         self.task_start_service_ = rospy.Service(self.task_start_service_name_, SetBool, self.taskStartCallback)
 
     def odomCallback(self, msg):
@@ -125,6 +136,9 @@ class CircleMotion:
         msg.data = True
         self.tree_detection_start_pub_.publish(msg)
 
+    def treeClusterCallback(self, msg):
+        self.tree_cluster_ = msg
+
     def treeLocationCallback(self, msg):
         self.tree_pos_update_flag_ = True
         self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
@@ -142,7 +156,7 @@ class CircleMotion:
             res.message = "Task does not start"
             rospy.loginfo("Task does not start")
         return res
-        
+
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
             delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_])
@@ -184,24 +198,24 @@ class CircleMotion:
             return
 
         delta_z = target_z - self.uav_z_pos_
-        
+
         delta_yaw = target_yaw - self.uav_yaw_
         if delta_yaw > math.pi:
             delta_yaw -= math.pi * 2
         elif delta_yaw < -math.pi:
             delta_yaw += math.pi * 2
-        
+
         nav_xy_vel = delta_xy * self.nav_xy_pos_pgain_
         nav_z_vel = delta_z * self.nav_z_pos_pgain_
         nav_yaw_vel = delta_yaw * self.nav_yaw_pgain_
-        
+
         nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
         vel_msg = Twist()
         vel_msg.linear.x = nav_xy_vel[0]
         vel_msg.linear.y = nav_xy_vel[1]
         vel_msg.linear.z = nav_z_vel
         vel_msg.angular.z = nav_yaw_vel
-        #for debug
+
         self.target_xy_pos_ = target_xy
         self.target_z_pos_ = target_z
         self.target_yaw_ = target_yaw
@@ -225,39 +239,80 @@ class CircleMotion:
 
         return vel_msg
 
-    def waitCycle(self, cycle, reset):
-        if reset == 'True':
-            self.cycle_count_ = 0
-            return False
+
+    def obstacleDetection(self):
+        if not self.do_avoidance_:
+            return [False]
+
+        if self.state_machine_ != self.APPROACHING_TO_TREE_STATE_ and self.state_machine_ != self.RETURN_HOME_STATE_:
+            return [False]
+
+        ## If closed to the target tree within a certain distance, that is safe zone,
+        ## we do not need to the obstacle avoidance.
+        dist = np.linalg.norm(self.target_xy_pos_)
+        if self.target_frame_ == self.GLOBAL_FRAME_:
+            dist = np.linalg.norm(self.target_xy_pos_ - self.uav_xy_pos_)
+        if dist < self.safe_zone_radius_:
+           #rospy.loginfo("safe zone, distance :%f", dist)
+           return [False]
+        nearest_obstacle_distance_to_head_direction = 0.0
+        nearest_obstacle_distance_in_head_direction = 10000.0
+        nearest_obstacle_id = -1
+        ## TODO: add changable obstacle_ignore radius, since 1m is too near for normal obstacle
+        for i in range(0, len(self.tree_cluster_.ranges)):
+
+            if self.tree_cluster_.ranges[i] > 0:
+                # check whether the obstacle is big enough
+                big_cluster = True
+                for j in range (-self.cluster_num_min_ / 2, self.cluster_num_min_ / 2):
+                    if math.isnan(self.tree_cluster_.ranges[i + j]):
+                        big_cluster = False
+                        break
+                if not big_cluster:
+                    continue
+
+                if abs(self.tree_cluster_.ranges[i]) < self.drone_obstacle_ignore_maximum_radius_:
+                    obstacle_angle = i * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
+                    obstacle_distance_to_head_direction = abs(self.tree_cluster_.ranges[i] * math.sin(obstacle_angle))
+                    if obstacle_distance_to_head_direction < self.drone_safety_minimum_radius_:
+                        ## the closest obstacle in head direction influence in earlist time
+                        obstacle_distance_in_head_direction = abs(self.tree_cluster_.ranges[i]) * math.cos(obstacle_angle)
+                        if obstacle_distance_in_head_direction < nearest_obstacle_distance_in_head_direction:
+                            nearest_obstacle_distance_in_head_direction = obstacle_distance_in_head_direction
+                            nearest_obstacle_distance_to_head_direction = obstacle_distance_to_head_direction
+                            nearest_obstacle_id = i
+        ## nearest_obstacle_id >= 0 condition means in previous step, a potential nearest_obstacle is found (nearest_obstacle_id initial value is -1)
+        if nearest_obstacle_id >= 0:
+            nearest_obstacle_angle = nearest_obstacle_id * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
+            rospy.logwarn("Meet obstacle: [%.3f, %.3f] -> %.3f[m], %.3f[deg] in phase: %s", nearest_obstacle_distance_in_head_direction, nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstacle_id], nearest_obstacle_angle / math.pi * 180.0, self.state_name_[self.state_machine_])
+
+            return [True, nearest_obstacle_angle]
         else:
-            self.cycle_count_ += 1
-            if self.cycle_count_ >= cycle:
-                return True
-            else:
-                return False
+            return [False]
 
     def controlCallback(self, event):
         if (not self.odom_update_flag_) or (not self.task_start_):
             return
 
-    #navigation
+        #navigation
         vel_msg = Twist()
         if self.state_machine_ == self.INITIAL_STATE_:
             vel_msg.linear.x = vel_msg.linear.y = vel_msg.linear.z = vel_msg.angular.z = 0.0
         if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
             vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_) #hover
         if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
+
             tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
-            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
-                                                              self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
+
+            vel_msg = self.goPos(self.LOCAL_FRAME_,
+                                 np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
+                                           self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
                                  self.takeoff_height_,
                                  self.uav_yaw_ + tree_direction)
+
         if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_motion_count_ * self.circle_motion_height_step_, self.circle_y_vel_, self.circle_radius_)
         if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
-        #use global frame
-            #vel_msg = self.goPos(self.GLOBAL_FRAME_, self.circle_initial_xy_, self.takeoff_height_, self.circle_initial_yaw_)
-        #use local frame
             tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
             vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
                                                               self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
@@ -272,9 +327,21 @@ class CircleMotion:
             else:
                 #use global frame
                 vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.turn_uav_yaw_ + math.pi)
-    #end navigation
 
-    #state machine
+        # obstacle avoidance
+        obstacle = self.obstacleDetection()
+        if obstacle[0]:
+            print "avoidance activate"
+            ## if nearest obstacle is on drone right side, drone moves left
+            if obstacle[1] < 0.0:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, self.avoid_vel_]), self.target_z_pos_, self.target_yaw_)
+            ## if nearest obstacle is on drone left side, drone moves right
+            else:
+                vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -self.avoid_vel_]), self.target_z_pos_, self.target_yaw_)
+
+        #end navigation
+
+        #state machine
         if self.state_machine_ == self.INITIAL_STATE_:
             self.initial_xy_pos_ = np.array(self.uav_xy_pos_)
             self.initial_yaw_ = self.uav_yaw_
@@ -294,7 +361,7 @@ class CircleMotion:
                 rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
                 self.initial_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_pos_) + self.uav_xy_pos_
                 self.initial_target_tree_xy_local_pos_ = self.tree_xy_pos_
-                
+
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 if self.task_kind_ == 1:
@@ -320,17 +387,26 @@ class CircleMotion:
                     self.turn_uav_xy_pos_ = self.uav_xy_pos_
                     self.turn_uav_yaw_ = self.uav_yaw_
                     self.state_machine_ = self.TURN_STATE_
+
+                    # stop tree tracking if necessary
+                    if self.turn_before_return_:
+                        rospy.wait_for_service(self.tracking_control_service_name_)
+                    try:
+                        stop_tracking = rospy.ServiceProxy(self.tracking_control_service_name_, SetBool)
+                        res = stop_tracking(False)
+                    except rospy.ServiceException, e:
+                        print "Service call failed: %s"%e
                 else:
                     self.state_machine_ = self.RETURN_HOME_STATE_
         elif self.state_machine_ == self.TURN_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.state_machine_ = self.RETURN_HOME_STATE_
-                
+                # TODO: stop mapping and tree database update
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
             pass
-    #end state machine
+        #end state machine
 
-    #publication
+        #publication
         self.state_machine_pub_.publish(self.state_name_[self.state_machine_])
 
         target_pos_msg = Odometry()

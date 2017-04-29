@@ -21,11 +21,12 @@
   <run_depend>nodelet_topic_tools</run_depend>
   <run_depend>pluginlib</run_depend>
   <run_depend>nodelet</run_depend>
-  
+
   <run_depend>dji_sdk</run_depend>
   <run_depend>guidance</run_depend>
   <run_depend>urg_node</run_depend>
   <run_depend>jsk_tools</run_depend>
+  <run_depend>gmapping</run_depend>
 
   <export>
     <nodelet plugin="${prefix}/image_throttle_nodelets.xml"/>

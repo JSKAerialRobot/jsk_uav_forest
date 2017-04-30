@@ -407,9 +407,9 @@ class ForestMotion:
                         res = update_target_tree()
 
                         if res.success:
-                            time.sleep(0.5)
                             self.state_machine_ = self.TREE_DETECTION_START_STATE_
                             self.tree_pos_update_flag_ = False
+                            time.sleep(0.5)
                             return
                     except rospy.ServiceException, e:
                         print "Service call failed: %s"%e

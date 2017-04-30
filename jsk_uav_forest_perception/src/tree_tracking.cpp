@@ -50,6 +50,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("tree_global_location_topic_name", tree_global_location_topic_name_, string("tree_global_location"));
   nhp_.param("stop_detection_topic_name", stop_detection_topic_name_, string("/detection_start"));
   nhp_.param("tracking_control_srv_name", tracking_control_srv_name_, string("/tracking_control"));
+  nhp_.param("update_target_tree_srv_name", update_target_tree_srv_name_, string("/update_target_tree"));
 
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17); //[rad] = 10[deg]
   nhp_.param("search_radius", search_radius_, 10.0); // 12[m]
@@ -59,11 +60,12 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("tree_circle_fitting", tree_circle_fitting_, true);
 
   nhp_.param("tree_radius_max", tree_radius_max_, 0.3);
-  nhp_.param("tree_radius_min", tree_radius_min_, 0.1);
+  nhp_.param("tree_radius_min", tree_radius_min_, 0.08);
 
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
   tracking_control_srv_ = nh_.advertiseService(tracking_control_srv_name_, &TreeTracking::trackingControlCallback, this);
+  update_target_tree_srv_ = nh_.advertiseService(update_target_tree_srv_name_, &TreeTracking::updateTargetTreeCallback, this);
 
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
@@ -79,10 +81,6 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   stop_msg.data = false;
   pub_stop_vision_detection_.publish(stop_msg);
 
-  /*
-    ROS_WARN("tree tracking: start tracking, angle_diff: %f, vision index: %d, laser index: %d, vision dist: %f, laser dist: %f", min_diff, (int)vision_detection_msg->vector.x, target_tree_index, vision_detection_msg->vector.z, laser_msg->ranges[target_tree_index]);
-  */
-
   tf::Matrix3x3 rotation;
   rotation.setRPY(0, 0, vision_detection_msg->vector.y + uav_yaw_);
   tf::Vector3 target_tree_global_location = uav_odom_ + rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
@@ -93,7 +91,8 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   /* add target tree to the tree data base */
   TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, target_tree_global_location));
   tree_db_.add(new_tree);
-  target_tree_ = new_tree;
+  target_trees_.resize(0);
+  target_trees_.push_back(new_tree);
 
   /* set the search center as the first target tree(with color marker) pos */
   search_center_ = target_tree_global_location;
@@ -113,7 +112,10 @@ void TreeTracking::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
   uav_orientation_.getRPY(r, p, y);
   uav_odom_.setX(uav_msg->pose.pose.position.x);
   uav_odom_.setY(uav_msg->pose.pose.position.y);
-  uav_odom_.setZ(uav_msg->pose.pose.position.z);
+
+  /* we only consider in the 2D space */
+  //uav_odom_.setZ(uav_msg->pose.pose.position.z);
+  uav_odom_.setZ(0);
   uav_roll_ = r; uav_pitch_ = p; uav_yaw_ = y;
 }
 
@@ -127,8 +129,8 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
       if(scan_msg->ranges[i] > 0) cluster_index.push_back(i);
 
   /* find the tree most close to the previous target tree */
-  int target_tree_index = 0;
   bool target_update = false;
+  int prev_vote = target_trees_.back()->getVote();
   for ( vector<int>::iterator it = cluster_index.begin(); it != cluster_index.end(); ++it)
     {
       /* we do not update trees pos if there is big tilt */
@@ -159,30 +161,35 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
       /* calc radius with circle fitting */
       if (tree_circle_fitting_)
         {
-	  vector<tf::Vector3> points;
-	  for (int i = *it; !isnan(scan_msg->ranges[i]) && i < scan_msg->ranges.size(); i++) 
-	    {
-	      double r = fabs(scan_msg->ranges[i]);
-	      double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
-	      tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
-	      points.push_back(point);
-	    }
-	  for (int i = (*it) - 1; !isnan(scan_msg->ranges[i]) && i > 0; i--) 
-	    {
-	      double r = fabs(scan_msg->ranges[i]);
-	      double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
-	      tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
-	      points.push_back(point);
-	    }
-	  tf::Vector3 tree_center_pos;
-          double tree_radius;	 
-	  CircleDetection::circleFitting(points, tree_center_pos, tree_radius);
+          vector<tf::Vector3> points;
+          for (int i = *it; !isnan(scan_msg->ranges[i]) && i < scan_msg->ranges.size(); i++)
+            {
+              double r = fabs(scan_msg->ranges[i]);
+              double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
+              tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
+              points.push_back(point);
+            }
+          for (int i = (*it) - 1; !isnan(scan_msg->ranges[i]) && i > 0; i--)
+            {
+              double r = fabs(scan_msg->ranges[i]);
+              double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
+              tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
+              points.push_back(point);
+            }
+          tf::Vector3 tree_center_pos;
+          double tree_radius;
+          CircleDetection::circleFitting(points, tree_center_pos, tree_radius);
           if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_)
             {
               tf::Matrix3x3 rotation;
               rotation.setRPY(0, 0, uav_yaw_);
               tf::Vector3 tree_center_global_location = uav_odom_ + rotation * tf::Vector3(tree_center_pos.x(), tree_center_pos.y(), 0);
               target_update += tree_db_.updateSingleTree(tree_center_global_location, tree_radius, only_target_);
+            }
+          else
+            {
+              if(verbose_)
+                ROS_INFO("radius: %f, min: %f, max: %f", tree_radius, tree_radius_min_, tree_radius_max_);
             }
         }
       else
@@ -194,12 +201,12 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
   /* update the whole database(sorting) */
   tree_db_.update();
 
-  tf::Vector3 target_tree_global_location = target_tree_->getPos();
+  tf::Vector3 target_tree_global_location = target_trees_.back()->getPos();
   tf::Matrix3x3 rotation;
   rotation.setRPY(0, 0, -uav_yaw_);
   tf::Vector3 target_tree_local_location = rotation * (target_tree_global_location - uav_odom_);
-  if(!target_update && only_target_)
-    ROS_WARN("lost the target tree: [%f, %f]", target_tree_global_location.x(), target_tree_global_location.y());
+  if(prev_vote ==  target_trees_.back()->getVote())
+    ROS_WARN_THROTTLE(0.5, "lost the target tree: [%f, %f], prev vote: %d, curr vote: %d", target_tree_global_location.x(), target_tree_global_location.y(), prev_vote, target_trees_.back()->getVote());
 
   if(verbose_) ROS_INFO("target_tree_global_location: [%f, %f]", target_tree_global_location.x(), target_tree_global_location.y());
 
@@ -218,6 +225,48 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
   if (visualization_) {
     tree_db_.visualization(scan_msg->header);
   }
+}
+
+bool TreeTracking::searchTargetTreeFromDatabase()
+{
+  /* simple method: search the closest tree as next target tree */
+  TreeHandlePtr target_tree = NULL;
+  float min_dist = 1e6;
+  vector<TreeHandlePtr> trees;
+  tree_db_.getTrees(trees);
+  tf::Vector3 previous_target_tree_pos = target_trees_.back()->getPos();
+  for(vector<TreeHandlePtr>::iterator it = trees.begin(); it != trees.begin() + tree_db_.validTreeNum(); ++it)
+    {
+      if (find(target_trees_.begin(), target_trees_.end(), *it)  != target_trees_.end())
+        {
+          //cout << "ignore: previous targe tree" << endl;
+          continue;
+        }
+
+      float dist = (previous_target_tree_pos - (*it)->getPos()).length();
+
+      if(dist < min_dist)
+        {
+          min_dist = dist;
+          target_tree = *it;
+        }
+    }
+
+  /* can not find next target tree */
+  if(target_tree == NULL) return false;
+
+  /* find the next target tree and set */
+  target_trees_.push_back(target_tree);
+  ROS_INFO("find new target tree: [%.3f, %.3f]", target_tree->getPos().x(), target_tree->getPos().y());
+  return true;
+}
+
+bool TreeTracking::updateTargetTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res)
+{
+  if(searchTargetTreeFromDatabase()) res.success = true;
+  else res.success = false;
+
+  return true;
 }
 
 bool TreeTracking::trackingControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)

@@ -6,6 +6,7 @@
   <arg name="do_mapping" default="False" />
   <arg name="turn_before_return" default="False" />
   <arg name="do_avoidance" default="True" />
+  <arg name="target_num" default="1" />
 
   <!-- bringup -->
   <include file="$(find jsk_uav_forest_common)/launch/m100_bringup.launch" >
@@ -34,6 +35,7 @@
     <arg name="rqt_gui" value="$(arg rqt_gui)" />
     <arg name="turn_before_return" value="$(arg turn_before_return)" />
     <arg name="do_avoidance" value="$(arg do_avoidance)" />
+    <arg name="target_num" value="$(arg target_num)" />
   </include>
 
   <!-- 2D SLAM -->

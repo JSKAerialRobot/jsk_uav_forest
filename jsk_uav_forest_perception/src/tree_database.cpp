@@ -32,7 +32,7 @@ TreeDataBase::TreeDataBase(ros::NodeHandle nh, ros::NodeHandle nhp):nh_(nh), nhp
   trees_.resize(0);
   nhp_.param("min_distance", min_distance_, 1.0); // 1.0[m]
   nhp_.param("max_radius", max_radius_, 0.5); // 1.0[m]
-  nhp_.param("display_num", display_num_, 7);
+  nhp_.param("valid_num", valid_num_, 7);
   nhp_.param("verbose", verbose_, false);
   nhp_.param("visualization_marker_topic_name", visualization_marker_topic_name_, string("/visualization_marker"));
   pub_visualization_marker_ = nh_.advertise<visualization_msgs::MarkerArray>(visualization_marker_topic_name_, 1);
@@ -83,7 +83,7 @@ bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& t
   else
     {
       if(verbose_  && !only_target)
-	ROS_WARN("Database tree No.%d, lost the target tree, drift: %f, the nearest target location: [%f, %f], prev target location: [%f, %f]", tree_index, min_dist, target_tree->getPos().x(), target_tree->getPos().y(), tree_pos.x(), tree_pos.y());
+	ROS_WARN("Database tree No.%d, lost the target tree, drift: %f, the nearest target location: [%f, %f, %f], prev target location: [%f, %f, %f]", tree_index, min_dist, target_tree->getPos().x(), target_tree->getPos().y(), target_tree->getPos().z(), tree_pos.x(), tree_pos.y(), tree_pos.z());
     }
 
   /* add new tree if necessary */
@@ -119,7 +119,7 @@ void TreeDataBase::visualization(std_msgs::Header header)
     size_t index = distance(trees_.begin(), it);
 
     /* only show top level trees */
-    if(index == display_num_) break;
+    if(index == valid_num_) break;
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "/world";

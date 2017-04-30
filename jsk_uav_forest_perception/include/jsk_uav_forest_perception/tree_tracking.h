@@ -46,6 +46,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Bool.h>
 #include <std_srvs/SetBool.h>
+#include <std_srvs/Trigger.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -72,6 +73,7 @@ private:
   ros::Publisher pub_tree_global_location_;
 
   ros::ServiceServer tracking_control_srv_;
+  ros::ServiceServer update_target_tree_srv_;
 
   string uav_odom_topic_name_;
   string laser_scan_topic_name_;
@@ -81,6 +83,7 @@ private:
   string tree_cluster_topic_name_;
   string stop_detection_topic_name_;
   string tracking_control_srv_name_;
+  string update_target_tree_srv_name_;
 
   double uav_tilt_thre_;
   double search_radius_;
@@ -90,7 +93,7 @@ private:
   bool tree_circle_fitting_;
 
   TreeDataBase tree_db_;
-  TreeHandlePtr target_tree_;
+  vector<TreeHandlePtr> target_trees_;
 
   tf::Vector3 search_center_;
   tf::Vector3 uav_odom_;
@@ -106,6 +109,8 @@ private:
   void laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_msg);
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
   bool trackingControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  bool updateTargetTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool searchTargetTreeFromDatabase();
   void circleFitting(const sensor_msgs::LaserScan& tree_cluster, int target_tree_index, tf::Vector3& tree_center_location, double& tree_radius);
 
 

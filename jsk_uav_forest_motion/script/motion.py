@@ -9,10 +9,11 @@ import numpy as np
 from dji_sdk.dji_drone import DJIDrone
 from geometry_msgs.msg import Twist, Quaternion, PointStamped, Vector3Stamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import String, Float32, Bool
+from std_msgs.msg import String, Float32, Bool, ColorRGBA
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool, SetBoolResponse
 from std_srvs.srv import Trigger, TriggerResponse
+from jsk_rviz_plugins.msg import OverlayText
 
 class ForestMotion:
 
@@ -49,8 +50,9 @@ class ForestMotion:
         self.FINISH_CIRCLE_MOTION_STATE_ = 5
         self.TURN_STATE_ = 6
         self.RETURN_HOME_STATE_ = 7
+        self.FINISH_STATE_ = 8
         self.state_machine_ = self.INITIAL_STATE_
-        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "turn", "return home"]
+        self.state_name_ = ["initial", "takeoff", "tree detection start", "approaching to tree", "circle motion", "finish circle motion", "turn", "return home", "finish"]
         self.circle_motion_count_ = 0
         self.target_count_ = 0
 
@@ -67,10 +69,13 @@ class ForestMotion:
         self.tree_pos_update_flag_ = False
 
         self.task_start_ = False
+        self.task_start_time_ = rospy.Time.now()
+        self.task_elapsed_time_ = rospy.Time(0)
 
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
         self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
+        self.state_visualization_pub_topic_name_ = rospy.get_param("state_visualization_pub_topic_name", "overlay_text")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
         self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
@@ -79,7 +84,6 @@ class ForestMotion:
         self.tracking_control_service_name_ = rospy.get_param("~tracking_control_service_name", "/tracking_control")
         self.update_target_tree_service_name_ = rospy.get_param("~update_target_tree_service_name", "/update_target_tree")
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
-
 
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
@@ -101,6 +105,7 @@ class ForestMotion:
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
+        self.visualization_ = rospy.get_param("~visualization", True)
 
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
 
@@ -121,6 +126,7 @@ class ForestMotion:
         self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
         self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
         self.tree_detection_start_pub_ = rospy.Publisher(self.tree_detection_start_pub_topic_name_, Bool, queue_size = 10)
+        self.state_visualization_pub_ = rospy.Publisher(self.state_visualization_pub_topic_name_, OverlayText, queue_size = 10)
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         self.tree_cluster_sub_ = rospy.Subscriber(self.tree_cluster_sub_topic_name_, LaserScan, self.treeClusterCallback)
@@ -164,6 +170,7 @@ class ForestMotion:
             res.success = True
             res.message = "Task Start"
             rospy.loginfo("Task Start")
+            self.task_start_time_ = rospy.Time.now()
         else:
             self.task_start_ = False
             res.success = False
@@ -351,7 +358,6 @@ class ForestMotion:
             ## if nearest obstacle is on drone left side, drone moves right
             else:
                 vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, -self.avoid_vel_]), self.target_z_pos_, self.target_yaw_)
-
         #end navigation
 
         #state machine
@@ -430,16 +436,40 @@ class ForestMotion:
                         print "Service call failed: %s"%e
                 else:
                     self.state_machine_ = self.RETURN_HOME_STATE_
+
         elif self.state_machine_ == self.TURN_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.state_machine_ = self.RETURN_HOME_STATE_
                 # TODO: stop mapping and tree database update
+
         elif self.state_machine_ == self.RETURN_HOME_STATE_:
+            if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+                self.state_machine_ = self.FINISH_STATE_
+
+        elif self.state_machine_ == self.FINISH_STATE_:
             pass
         #end state machine
 
         #publication
         self.state_machine_pub_.publish(self.state_name_[self.state_machine_])
+
+        if self.visualization_ == True:
+            if self.state_machine_ != self.FINISH_STATE_:
+                self.task_elapsed_time = (rospy.Time.now() - self.task_start_time_).to_sec()
+            text_msg = OverlayText()
+            text_msg.width = 500
+            text_msg.height = 110
+            text_msg.left = 10
+            text_msg.top = 10
+            text_msg.text_size = 20
+            text_msg.line_width = 2
+            text_msg.font = "DejaVu Sans Mono"
+            text_msg.text = """Task Kind:%d
+                               State:%d,%s
+                               Time:%.1f  """ % (self.task_kind_, self.state_machine_, self.state_name_[self.state_machine_], self.task_elapsed_time)
+            text_msg.fg_color = ColorRGBA(25 / 255.0, 1.0, 240.0 / 255.0, 1.0)
+            text_msg.bg_color = ColorRGBA(0.0, 0.0, 0.0, 0.2)
+            self.state_visualization_pub_.publish(text_msg)
 
         target_pos_msg = Odometry()
         target_pos_msg.header = self.odom_.header

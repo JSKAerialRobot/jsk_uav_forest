@@ -1,2 +1,5 @@
 sensor_msgs/CompressedImage remote__image__compressed
-sensor_msgs/LaserScan scan__throttle
+#sensor_msgs/LaserScan scan__throttle
+jsk_rviz_plugins/OverlayText overlay_text__throttle
+visualization_msgs/MarkerArray visualization_marker__throttle
+nav_msgs/Odometry modified_odom__throttle

@@ -8,6 +8,7 @@
   <arg name="target_num" default="1" />
   <arg name="turn_before_return" default="True" />
   <arg name="do_avoidance" default="False" />
+  <arg name="visualization" default="True" />
 
   ##### Perception Node #####
   <include file="$(find jsk_uav_forest_perception)/launch/tree_detector.launch">
@@ -23,6 +24,7 @@
     <param name="circle_motion_times" value="$(arg circle_motion_times)" />
     <param name="turn_before_return" value="$(arg turn_before_return)" />
     <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)"/>
+    <param name="visualization" value="$(arg visualization)" />
     <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
   </node>
 

@@ -6,6 +6,9 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   nodelet_topic_tools
   pluginlib
+  rospy
+  rqt_gui
+  rqt_gui_py
   )
 
 ################################################

@@ -118,6 +118,55 @@
       </include>
     </model>
 
+    <model name="sub_target_tree7" >
+      <pose>2.1 -2 0 0 0 0</pose>
+      <include>
+        <uri>model://tree</uri>
+      </include>
+    </model>
+
+    <model name="sub_target_tree8" >
+      <pose>0.1 -4 0 0 0 0</pose>
+      <include>
+        <uri>model://tree</uri>
+      </include>
+    </model>
+
+    <model name="sub_target_tree9" >
+      <pose>4.5 0.2 0 0 0 0</pose>
+      <include>
+        <uri>model://tree</uri>
+      </include>
+    </model>
+
+    <model name="sub_target_tree10" >
+      <pose>3.0 4 0 0 0 0</pose>
+      <include>
+        <uri>model://tree</uri>
+      </include>
+    </model>
+    
+    <model name="sub_target_tree11" >
+      <pose>6 2.5 0 0 0 0</pose>
+      <include>
+        <uri>model://tree</uri>
+      </include>
+    </model>
+
+    <model name="sub_target_tree12" >
+      <pose>2 -5.3 0 0 0 0</pose>
+      <include>
+        <uri>model://tree</uri>
+      </include>
+    </model>
+    
+    <model name="sub_target_tree9" >
+      <pose>4.5 -4.2 0 0 0 0</pose>
+      <include>
+        <uri>model://tree</uri>
+      </include>
+    </model>
+
     <!-- Please check the spefic rule: http://www.lsse.kyutech.ac.jp/~sociorobo/ja/forestdrone2016r -->
     <model name="red_band">
       <pose>0 0 0.8 0 0 0</pose>

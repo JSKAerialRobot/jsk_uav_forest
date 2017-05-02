@@ -5,8 +5,13 @@ import os
 import rospy
 
 from qt_gui.plugin import Plugin
+import python_qt_binding as pyqt
+if pyqt.QT_BINDING_VERSION[0] == '4':
+    from python_qt_binding.QtGui import QWidget
+elif pyqt.QT_BINDING_VERSION[0] == '5':
+    from python_qt_binding.QtWidgets import QWidget
 from python_qt_binding import loadUi
-from python_qt_binding.QtGui import QWidget
+
 from python_qt_binding.QtCore import QTimer
 
 from std_srvs.srv import SetBool

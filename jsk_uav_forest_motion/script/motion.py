@@ -378,14 +378,14 @@ class ForestMotion:
 
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+                self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
+                self.circle_initial_yaw_ = self.uav_yaw_
+                self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
                 if self.task_kind_ == 1:
-                    self.state_machine_ = self.RETURN_HOME_STATE_
+                    self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
                 elif self.task_kind_ > 1:
                     self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
-                    self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
-                    self.circle_initial_yaw_ = self.uav_yaw_
-                    self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
-
+                    
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_accumulated_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
                 self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_

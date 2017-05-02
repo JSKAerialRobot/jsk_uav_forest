@@ -14,13 +14,15 @@ from python_qt_binding import loadUi
 
 from python_qt_binding.QtCore import QTimer
 
-from std_srvs.srv import SetBool
+from std_msgs.msg import Empty
 
 class MyPlugin(Plugin):
     def __init__(self, context):
         super(MyPlugin, self).__init__(context)
         # Give QObjects reasonable names
         self.setObjectName('MyPlugin')
+        
+        self.task_start_pub_ = rospy.Publisher('task_start', Empty, queue_size = 10)
 
         # Process standalone plugin command-line arguments
         from argparse import ArgumentParser
@@ -46,7 +48,7 @@ class MyPlugin(Plugin):
         # it's set in _widget). This is useful when you open multiple 
         # plugins at once. Also if you open multiple instances of your 
 
-        self._widget.startButton.clicked.connect(self.taskStartServiceCall)
+        self._widget.startButton.clicked.connect(self.taskStartPub)
         
         # plugin at once, these lines add number to make it easy to 
         # tell from pane to pane.
@@ -56,10 +58,5 @@ class MyPlugin(Plugin):
         context.add_widget(self._widget)
         
         
-    def taskStartServiceCall(self):
-        rospy.wait_for_service("task_start")
-        try:
-            task_start = rospy.ServiceProxy("task_start", SetBool)
-            task_start(True)
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
+    def taskStartPub(self):
+        self.task_start_pub_.publish()

@@ -9,10 +9,9 @@ import numpy as np
 from dji_sdk.dji_drone import DJIDrone
 from geometry_msgs.msg import Twist, Quaternion, PointStamped, Vector3Stamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import String, Float32, Bool, ColorRGBA
+from std_msgs.msg import String, Float32, Bool, ColorRGBA, Empty
 from sensor_msgs.msg import LaserScan
-from std_srvs.srv import SetBool, SetBoolResponse
-from std_srvs.srv import Trigger, TriggerResponse
+from std_srvs.srv import Trigger, TriggerResponse, SetBool
 from jsk_rviz_plugins.msg import OverlayText
 
 class ForestMotion:
@@ -76,11 +75,11 @@ class ForestMotion:
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
         self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
         self.state_visualization_pub_topic_name_ = rospy.get_param("state_visualization_pub_topic_name", "overlay_text")
+        self.task_start_sub_topic_name_ = rospy.get_param("~task_start_sub_topic_name", "task_start")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
         self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
         self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
-        self.task_start_service_name_ = rospy.get_param("~task_start_service_name", "task_start")
         self.tracking_control_service_name_ = rospy.get_param("~tracking_control_service_name", "/tracking_control")
         self.update_target_tree_service_name_ = rospy.get_param("~update_target_tree_service_name", "/update_target_tree")
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
@@ -127,13 +126,18 @@ class ForestMotion:
         self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
         self.tree_detection_start_pub_ = rospy.Publisher(self.tree_detection_start_pub_topic_name_, Bool, queue_size = 10)
         self.state_visualization_pub_ = rospy.Publisher(self.state_visualization_pub_topic_name_, OverlayText, queue_size = 10)
+        self.task_start_sub_ = rospy.Subscriber(self.task_start_sub_topic_name_, Empty, self.taskStartCallback)
         self.odom_sub_ = rospy.Subscriber(self.uav_odom_sub_topic_name_, Odometry, self.odomCallback)
         self.tree_location_sub_ = rospy.Subscriber(self.tree_location_sub_topic_name_, PointStamped, self.treeLocationCallback)
         self.tree_cluster_sub_ = rospy.Subscriber(self.tree_cluster_sub_topic_name_, LaserScan, self.treeClusterCallback)
-        self.task_start_service_ = rospy.Service(self.task_start_service_name_, SetBool, self.taskStartCallback)
-
+        
         self.control_timer_ = rospy.Timer(rospy.Duration(1.0 / self.control_rate_), self.controlCallback)
 
+    def taskStartCallback(self, msg):
+        rospy.loginfo("Task Start")
+        self.task_start_time_ = rospy.Time.now()
+        self.task_start_ = True
+    
     def odomCallback(self, msg):
         self.odom_ = msg
         self.uav_xy_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
@@ -162,21 +166,6 @@ class ForestMotion:
     def treeLocationCallback(self, msg):
         self.tree_pos_update_flag_ = True
         self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
-
-    def taskStartCallback(self, req):
-        res = SetBoolResponse()
-        if req.data == True:
-            self.task_start_ = True
-            res.success = True
-            res.message = "Task Start"
-            rospy.loginfo("Task Start")
-            self.task_start_time_ = rospy.Time.now()
-        else:
-            self.task_start_ = False
-            res.success = False
-            res.message = "Task does not start"
-            rospy.loginfo("Task does not start")
-        return res
 
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:

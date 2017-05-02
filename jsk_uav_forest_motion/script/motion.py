@@ -12,6 +12,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String, Float32, Bool, ColorRGBA, Empty
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger, TriggerResponse, SetBool
+
 from jsk_rviz_plugins.msg import OverlayText
 
 class ForestMotion:
@@ -323,10 +324,11 @@ class ForestMotion:
             vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_motion_count_ * self.circle_motion_height_step_, self.circle_y_vel_, self.circle_radius_)
         if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
             tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
-            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
-                                                              self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
+            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_,
+                                                              self.tree_xy_pos_[1]]),
                                  self.takeoff_height_,
                                  self.circle_initial_yaw_)
+
         if self.state_machine_ == self.TURN_STATE_:
             vel_msg = self.goPos(self.GLOBAL_FRAME_, self.turn_uav_xy_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
         if self.state_machine_ == self.RETURN_HOME_STATE_:
@@ -372,14 +374,14 @@ class ForestMotion:
 
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
+                self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
+                self.circle_initial_yaw_ = self.uav_yaw_
+                self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
                 if self.task_kind_ == 1:
-                    self.state_machine_ = self.RETURN_HOME_STATE_
+                    self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
                 elif self.task_kind_ > 1:
                     self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
-                    self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
-                    self.circle_initial_yaw_ = self.uav_yaw_
-                    self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
-
+                    
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_accumulated_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
                 self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
@@ -445,16 +447,18 @@ class ForestMotion:
         if self.visualization_ == True:
             if self.state_machine_ != self.FINISH_STATE_:
                 self.task_elapsed_time = (rospy.Time.now() - self.task_start_time_).to_sec()
-            text_msg = OverlayText()            
+
+            text_msg = OverlayText()
             text_msg.width = 500
-            text_msg.height = 70
+            text_msg.height = 110
             text_msg.left = 10
             text_msg.top = 10
             text_msg.text_size = 20
             text_msg.line_width = 2
             text_msg.font = "DejaVu Sans Mono"
-            text_msg.text = """State:%d,%s
-                               Time:%.1f  """ % (self.state_machine_, self.state_name_[self.state_machine_], self.task_elapsed_time)
+            text_msg.text = """Task Kind:%d
+                               State:%d,%s
+                               Time:%.1f  """ % (self.task_kind_, self.state_machine_, self.state_name_[self.state_machine_], self.task_elapsed_time)
             text_msg.fg_color = ColorRGBA(25 / 255.0, 1.0, 240.0 / 255.0, 1.0)
             text_msg.bg_color = ColorRGBA(0.0, 0.0, 0.0, 0.2)
             self.state_visualization_pub_.publish(text_msg)

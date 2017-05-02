@@ -3,6 +3,9 @@ project(jsk_uav_forest_common)
 
 find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
+  nav_msgs
+  visualization_msgs
+  jsk_rviz_plugins
   message_generation
   nodelet_topic_tools
   pluginlib
@@ -25,6 +28,9 @@ add_message_files(
 generate_messages(
    DEPENDENCIES
    sensor_msgs
+   nav_msgs
+   visualization_msgs
+   jsk_rviz_plugins
    )
 
 

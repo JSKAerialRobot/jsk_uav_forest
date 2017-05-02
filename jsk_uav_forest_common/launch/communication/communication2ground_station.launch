@@ -11,21 +11,33 @@
   <group ns="camera">
     <node pkg="nodelet" type="nodelet" name="image_throttle"
           args="load jsk_uav_forest_common/image_throttle camera_nodelet_manager" output="screen">
-      <remap from="/camera/topic_in"  to="/target"/>
-      <remap from="/camera/topic_out" to="/target/throttle" />
+      <remap from="/camera/topic_in"  to="/camera/image_rect"/>
+      <remap from="/camera/topic_out" to="/camera/image_rect/throttle" />
       <param name="update_rate" value="$(arg slow_rate)" />
     </node>
 
     <!-- compressed: jpeg -->
     <param name="/remote/image/compressed/jpeg_quality" value="10" />
-    <node name="republish" type="republish" pkg="image_transport" output="screen" args="raw in:=/target/throttle compressed out:=/remote/image">
+    <node name="republish" type="republish" pkg="image_transport" output="screen" args="raw in:=/camera/image_rect/throttle compressed out:=/remote/image">
     </node>
   </group>
 
-  <node pkg="topic_tools" type="throttle" name="scan_throttle" args="messages /scan 1.0" >
+  <!--node pkg="topic_tools" type="throttle" name="scan_throttle" args="messages /scan 0.5" >
     <remap from="/scan_throttle" to="/scan/throttle" />
+  </node-->
+
+  <node pkg="topic_tools" type="throttle" name="overlay_text_throttle" args="messages /overlay_text 1.0" >
+    <remap from="/overlay_text_throttle" to="/overlay_text/throttle" />
   </node>
-  
+
+  <node pkg="topic_tools" type="throttle" name="visualization_marker_throttle" args="messages /visualization_marker 0.5" >
+    <remap from="/visualization_marker_throttle" to="/visualization_marker/throttle" />
+  </node>
+
+  <node pkg="topic_tools" type="throttle" name="modified_odom_throttle" args="messages /modified_odom 0.5" >
+    <remap from="/modified_odom_throttle" to="/modified_odom/throttle" />
+  </node>
+
   <!-- UAV to Ground Station -->
   <node pkg="jsk_network_tools" type="silverhammer_highspeed_streamer.py"
         name="highspeed_streamer">

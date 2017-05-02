@@ -14,11 +14,10 @@
     <param name="topic_prefix" value="" />
   </node>
 
-  <node pkg="image_view" type="image_view" name="image_view" output="screen" >
-    <remap from="image" to="/remote/image"/>
-    <param name="image_transport" value="compressed"/>
-  </node>
-
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find jsk_uav_forest_common)/launch/communication/groundstation.rviz" respawn="true"/>
+  
+  <node pkg="jsk_uav_forest_common" type="tf_broadcaster.py" name="tf_broadcaster" output="screen">
+    <param name="uav_odom_topic_name" value="/modified_odom/throttle" />
+  </node>
 
 </launch>

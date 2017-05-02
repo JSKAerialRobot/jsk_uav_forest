@@ -30,6 +30,7 @@
   <run_depend>urg_node</run_depend>
   <run_depend>jsk_tools</run_depend>
   <run_depend>gmapping</run_depend>
+  <run_depend>jsk_rviz_plugins</run_depend>
 
   <export>
     <nodelet plugin="${prefix}/image_throttle_nodelets.xml"/>

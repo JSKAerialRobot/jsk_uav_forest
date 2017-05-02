@@ -1,0 +1,12 @@
+<library path="scripts">
+  <class name="StartButton" type="start_button.start_button.MyPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      Start Button App
+    </description>
+    <qtgui>
+      <label>Start Button</label>
+      <icon type="theme">applications-other</icon>
+      <statustip>Start Button App</statustip>
+    </qtgui>
+  </class>
+</library>

@@ -70,7 +70,6 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
   pub_stop_vision_detection_ = nh_.advertise<std_msgs::Bool>(stop_detection_topic_name_, 1);
-
 }
 
 void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg)
@@ -84,6 +83,7 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   tf::Matrix3x3 rotation;
   rotation.setRPY(0, 0, vision_detection_msg->vector.y + uav_yaw_);
   tf::Vector3 target_tree_global_location = uav_odom_ + rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
+  initial_target_tree_direction_vec_ = rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
 
   /* start laesr-only subscribe */
   sub_laser_scan_ = nh_.subscribe(laser_scan_topic_name_, 1, &TreeTracking::laserScanCallback, this);
@@ -96,7 +96,7 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
 
   /* set the search center as the first target tree(with color marker) pos */
   search_center_ = target_tree_global_location;
-
+  
   sub_vision_detection_.shutdown(); //stop
 
 }
@@ -142,7 +142,7 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 
       tf::Vector3 tree_global_location;
 
-      /* calculate the distance  */
+      /* calculate the distance */
       tf::Matrix3x3 rotation;
       rotation.setRPY(0, 0, *it * scan_msg->angle_increment + scan_msg->angle_min + uav_yaw_);
       tree_global_location = uav_odom_ + rotation * tf::Vector3(scan_msg->ranges[*it], 0, 0);
@@ -179,7 +179,7 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
           tf::Vector3 tree_center_pos;
           double tree_radius;
           CircleDetection::circleFitting(points, tree_center_pos, tree_radius);
-          if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_)
+	  if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_)
             {
               tf::Matrix3x3 rotation;
               rotation.setRPY(0, 0, uav_yaw_);
@@ -229,12 +229,12 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 
 bool TreeTracking::searchTargetTreeFromDatabase()
 {
-  /* simple method: search the closest tree as next target tree */
   TreeHandlePtr target_tree = NULL;
   float min_dist = 1e6;
   vector<TreeHandlePtr> trees;
   tree_db_.getTrees(trees);
   tf::Vector3 previous_target_tree_pos = target_trees_.back()->getPos();
+  float prev_distance_from_home = initial_target_tree_direction_vec_.dot(previous_target_tree_pos) / initial_target_tree_direction_vec_.length();
   for(vector<TreeHandlePtr>::iterator it = trees.begin(); it != trees.begin() + tree_db_.validTreeNum(); ++it)
     {
       if (find(target_trees_.begin(), target_trees_.end(), *it)  != target_trees_.end())
@@ -242,10 +242,11 @@ bool TreeTracking::searchTargetTreeFromDatabase()
           //cout << "ignore: previous targe tree" << endl;
           continue;
         }
-
+     
+      float distance_from_home = initial_target_tree_direction_vec_.dot((*it)->getPos()) / initial_target_tree_direction_vec_.length();
       float dist = (previous_target_tree_pos - (*it)->getPos()).length();
 
-      if(dist < min_dist)
+      if(dist < min_dist && distance_from_home > prev_distance_from_home)
         {
           min_dist = dist;
           target_tree = *it;

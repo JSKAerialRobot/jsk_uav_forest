@@ -98,6 +98,7 @@ private:
   tf::Vector3 search_center_;
   tf::Vector3 uav_odom_;
   float uav_roll_, uav_pitch_, uav_yaw_;
+  tf::Vector3 initial_target_tree_direction_vec_;
 
   //temp
   double tree_radius_max_, tree_radius_min_;

@@ -74,6 +74,7 @@ private:
 
   ros::ServiceServer tracking_control_srv_;
   ros::ServiceServer update_target_tree_srv_;
+  ros::ServiceServer set_first_tree_srv_;
 
   string uav_odom_topic_name_;
   string laser_scan_topic_name_;
@@ -84,6 +85,7 @@ private:
   string stop_detection_topic_name_;
   string tracking_control_srv_name_;
   string update_target_tree_srv_name_;
+  string set_first_tree_srv_name_;
 
   double uav_tilt_thre_;
   double search_radius_;
@@ -111,10 +113,9 @@ private:
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
   bool trackingControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
   bool updateTargetTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool setFirstTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+
   bool searchTargetTreeFromDatabase();
-  void circleFitting(const sensor_msgs::LaserScan& tree_cluster, int target_tree_index, tf::Vector3& tree_center_location, double& tree_radius);
-
-
 };
 
 #endif

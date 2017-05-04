@@ -51,6 +51,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("stop_detection_topic_name", stop_detection_topic_name_, string("/detection_start"));
   nhp_.param("tracking_control_srv_name", tracking_control_srv_name_, string("/tracking_control"));
   nhp_.param("update_target_tree_srv_name", update_target_tree_srv_name_, string("/update_target_tree"));
+  nhp_.param("set_first_tree_srv_name", set_first_tree_srv_name_, string("/set_first_tree"));
 
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17); //[rad] = 10[deg]
   nhp_.param("search_radius", search_radius_, 10.0); // 12[m]
@@ -66,7 +67,8 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
   tracking_control_srv_ = nh_.advertiseService(tracking_control_srv_name_, &TreeTracking::trackingControlCallback, this);
   update_target_tree_srv_ = nh_.advertiseService(update_target_tree_srv_name_, &TreeTracking::updateTargetTreeCallback, this);
-
+  set_first_tree_srv_ = nh_.advertiseService(set_first_tree_srv_name_, &TreeTracking::setFirstTreeCallback, this);
+  
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
   pub_stop_vision_detection_ = nh_.advertise<std_msgs::Bool>(stop_detection_topic_name_, 1);
@@ -283,5 +285,12 @@ bool TreeTracking::trackingControlCallback(std_srvs::SetBool::Request &req, std_
       ROS_INFO("stop tree tracking");
     }
 
+  return true;
+}
+
+bool TreeTracking::setFirstTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res)
+{
+  target_trees_.erase(target_trees_.begin() + 1, target_trees_.end());
+  res.success = true;
   return true;
 }

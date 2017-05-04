@@ -84,6 +84,7 @@ class ForestMotion:
         self.tracking_control_service_name_ = rospy.get_param("~tracking_control_service_name", "/tracking_control")
         self.update_target_tree_service_name_ = rospy.get_param("~update_target_tree_service_name", "/update_target_tree")
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
+        self.set_first_tree_service_name_ = rospy.get_param("~set_first_tree_service_name_", "/set_first_tree")
 
         self.control_rate_ = rospy.get_param("~control_rate", 20)
         self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
@@ -380,7 +381,10 @@ class ForestMotion:
                 if self.task_kind_ == 1:
                     self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
                 elif self.task_kind_ > 1:
-                    self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
+                    if self.task_kind_ == 3 and self.target_count_ == self.target_num_:
+                        self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
+                    else:
+                        self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
                     
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_accumulated_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
@@ -397,19 +401,36 @@ class ForestMotion:
 
                 # task3 special process
                 self.target_count_ += 1
-                if self.task_kind_ == 3 and self.target_count_ < self.target_num_:
-                    rospy.wait_for_service(self.update_target_tree_service_name_)
-                    try:
-                        update_target_tree = rospy.ServiceProxy(self.update_target_tree_service_name_, Trigger)
-                        res = update_target_tree()
-
-                        if res.success:
-                            self.state_machine_ = self.TREE_DETECTION_START_STATE_
-                            self.tree_pos_update_flag_ = False
-                            time.sleep(0.5)
-                            return
-                    except rospy.ServiceException, e:
-                        print "Service call failed: %s"%e
+                if self.task_kind_ == 3: 
+                    if self.target_count_ < self.target_num_:
+                        rospy.wait_for_service(self.update_target_tree_service_name_)
+                        try:
+                            update_target_tree = rospy.ServiceProxy(self.update_target_tree_service_name_, Trigger)
+                            res = update_target_tree()
+                            
+                            if res.success:
+                                self.state_machine_ = self.TREE_DETECTION_START_STATE_
+                                self.tree_pos_update_flag_ = False
+                                time.sleep(0.5)
+                                return
+                            else:
+                                self.target_count_ = self.target_num_
+                        except rospy.ServiceException, e:
+                            print "Service call failed: %s"%e
+                    
+                    if self.target_count_ == self.target_num_:
+                        rospy.wait_for_service(self.set_first_tree_service_name_)
+                        try:
+                            set_first_tree = rospy.ServiceProxy(self.set_first_tree_service_name_, Trigger)
+                            res = set_first_tree()
+        
+                            if res.success:
+                                self.state_machine_ = self.TREE_DETECTION_START_STATE_
+                                self.tree_pos_update_flag_ = False
+                                time.sleep(0.5)
+                                return
+                        except rospy.ServiceException, e:
+                            print "Service call failed: %s"%e
 
                 if self.turn_before_return_ == True:
                     rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])

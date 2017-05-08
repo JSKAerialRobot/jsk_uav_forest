@@ -37,7 +37,7 @@ class ForestMotion:
         self.target_z_pos_ = 0.0
         self.target_yaw_ = 0.0
         self.target_frame_ = self.GLOBAL_FRAME_
-        self.initial_xy_pos_ = np.zeros(2)
+        self.initial_xy_global_pos_ = np.zeros(2)
         self.initial_z_pos_ = 0.0
         self.initial_yaw_ = 0.0
 
@@ -57,7 +57,7 @@ class ForestMotion:
         self.target_count_ = 0
 
         self.odom_update_flag_ = False
-        self.uav_xy_pos_ = np.zeros(2)
+        self.uav_xy_global_pos_ = np.zeros(2)
         self.uav_z_pos_ = 0.0
         self.uav_yaw_ = 0.0
         self.uav_yaw_old_ = 0.0
@@ -65,12 +65,14 @@ class ForestMotion:
         self.uav_accumulated_yaw_ = 0.0
         self.tree_cluster_ = LaserScan()
 
-        self.tree_xy_pos_ = np.zeros(2)
+        self.tree_xy_local_pos_ = np.zeros(2)
         self.tree_pos_update_flag_ = False
 
         self.task_start_ = False
         self.task_start_time_ = rospy.Time.now()
         self.task_elapsed_time_ = rospy.Time(0)
+
+        self.turn_uav_xy_global_pos_ = np.zeros(2)
 
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
@@ -142,7 +144,7 @@ class ForestMotion:
     
     def odomCallback(self, msg):
         self.odom_ = msg
-        self.uav_xy_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
+        self.uav_xy_global_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
         self.uav_z_pos_ = msg.pose.pose.position.z
         quaternion = np.array([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])
 
@@ -167,11 +169,11 @@ class ForestMotion:
 
     def treeLocationCallback(self, msg):
         self.tree_pos_update_flag_ = True
-        self.tree_xy_pos_ = np.array([msg.point.x, msg.point.y])
+        self.tree_xy_local_pos_ = np.array([msg.point.x, msg.point.y])
 
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
-            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_pos_[0], target_xy_pos[1] - self.uav_xy_pos_[1], target_z_pos - self.uav_z_pos_])
+            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], target_z_pos - self.uav_z_pos_])
         elif frame == self.LOCAL_FRAME_:
             delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_])
         else:
@@ -203,7 +205,7 @@ class ForestMotion:
     def goPos(self, frame, target_xy, target_z, target_yaw):
         if frame == self.GLOBAL_FRAME_:
             rot_mat = np.array([[math.cos(self.uav_yaw_), math.sin(self.uav_yaw_)],[-math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
-            delta_xy = np.dot(rot_mat, target_xy - self.uav_xy_pos_)
+            delta_xy = np.dot(rot_mat, target_xy - self.uav_xy_global_pos_)
         elif frame == self.LOCAL_FRAME_:
             delta_xy = target_xy
         else:
@@ -235,12 +237,12 @@ class ForestMotion:
 
         return vel_msg
 
-    def goCircle(self, circle_center_xy, target_z, target_y_vel, radius):
+    def goCircle(self, circle_center_local_xy, target_z, target_y_vel, radius):
         nav_xy_vel = np.zeros(2)
-        nav_xy_vel[0] = -(radius - circle_center_xy[0]) * self.nav_xy_pos_pgain_
+        nav_xy_vel[0] = -(radius - circle_center_local_xy[0]) * self.nav_xy_pos_pgain_
         nav_xy_vel[1] = target_y_vel
         nav_z_vel = target_z - self.uav_z_pos_
-        nav_yaw_vel = math.atan2(circle_center_xy[1], circle_center_xy[0]) * self.nav_yaw_pgain_ - target_y_vel / radius #feedback+feedforward
+        nav_yaw_vel = math.atan2(circle_center_local_xy[1], circle_center_local_xy[0]) * self.nav_yaw_pgain_ - target_y_vel / radius #feedback+feedforward
         nav_xy_vel, nav_z_vel, nav_yaw_vel = self.saturateVelocity(nav_xy_vel, nav_z_vel, nav_yaw_vel)
 
         vel_msg = Twist()
@@ -263,7 +265,7 @@ class ForestMotion:
         ## we do not need to the obstacle avoidance.
         dist = np.linalg.norm(self.target_xy_pos_)
         if self.target_frame_ == self.GLOBAL_FRAME_:
-            dist = np.linalg.norm(self.target_xy_pos_ - self.uav_xy_pos_)
+            dist = np.linalg.norm(self.target_xy_pos_ - self.uav_xy_global_pos_)
         if dist < self.safe_zone_radius_:
            #rospy.loginfo("safe zone, distance :%f", dist)
            return [False]
@@ -310,35 +312,33 @@ class ForestMotion:
         if self.state_machine_ == self.INITIAL_STATE_:
             vel_msg.linear.x = vel_msg.linear.y = vel_msg.linear.z = vel_msg.angular.z = 0.0
         if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_, self.takeoff_height_, self.initial_yaw_) #hover
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_global_pos_, self.takeoff_height_, self.initial_yaw_) #hover
         if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
-
-            tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
-
+            tree_direction = math.atan2(self.tree_xy_local_pos_[1], self.tree_xy_local_pos_[0])
             vel_msg = self.goPos(self.LOCAL_FRAME_,
-                                 np.array([self.tree_xy_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
-                                           self.tree_xy_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
+                                 np.array([self.tree_xy_local_pos_[0] - self.circle_radius_ * math.cos(tree_direction),
+                                           self.tree_xy_local_pos_[1] - self.circle_radius_ * math.sin(tree_direction)]),
                                  self.takeoff_height_,
                                  self.uav_yaw_ + tree_direction)
 
         if self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
-            vel_msg = self.goCircle(self.tree_xy_pos_, self.takeoff_height_ + self.circle_motion_count_ * self.circle_motion_height_step_, self.circle_y_vel_, self.circle_radius_)
+            vel_msg = self.goCircle(self.tree_xy_local_pos_, self.takeoff_height_ + self.circle_motion_count_ * self.circle_motion_height_step_, self.circle_y_vel_, self.circle_radius_)
         if self.state_machine_ == self.FINISH_CIRCLE_MOTION_STATE_:
-            tree_direction = math.atan2(self.tree_xy_pos_[1], self.tree_xy_pos_[0])
-            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_pos_[0] - self.circle_radius_,
-                                                              self.tree_xy_pos_[1]]),
+            tree_direction = math.atan2(self.tree_xy_local_pos_[1], self.tree_xy_local_pos_[0])
+            vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([self.tree_xy_local_pos_[0] - self.circle_radius_,
+                                                              self.tree_xy_local_pos_[1]]),
                                  self.takeoff_height_,
                                  self.circle_initial_yaw_)
 
         if self.state_machine_ == self.TURN_STATE_:
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.turn_uav_xy_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.turn_uav_xy_global_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
         if self.state_machine_ == self.RETURN_HOME_STATE_:
             if self.turn_before_return_ == False:
                 #use local frame
-                vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_pos_ - self.initial_target_tree_xy_local_pos_, self.takeoff_height_, self.initial_yaw_)
+                vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_local_pos_ - self.initial_target_tree_xy_local_pos_, self.takeoff_height_, self.initial_yaw_)
             else:
                 #use global fram
-                vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
+                vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_global_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
 
         # obstacle avoidance
         obstacle = self.obstacleDetection()
@@ -354,7 +354,7 @@ class ForestMotion:
 
         #state machine
         if self.state_machine_ == self.INITIAL_STATE_:
-            self.initial_xy_pos_ = np.array(self.uav_xy_pos_)
+            self.initial_xy_global_pos_ = np.array(self.uav_xy_global_pos_)
             self.initial_yaw_ = self.uav_yaw_
             if self.use_dji_ == True:
                 self.drone_.takeoff()
@@ -370,14 +370,14 @@ class ForestMotion:
             if self.tree_pos_update_flag_ == True:
                 self.state_machine_ = self.APPROACHING_TO_TREE_STATE_
                 rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
-                self.initial_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_pos_) + self.uav_xy_pos_
-                self.initial_target_tree_xy_local_pos_ = self.tree_xy_pos_
+                self.initial_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_local_pos_) + self.uav_xy_global_pos_
+                self.initial_target_tree_xy_local_pos_ = self.tree_xy_local_pos_
 
         elif self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             if self.isConvergent(self.target_frame_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_):
                 self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
                 self.circle_initial_yaw_ = self.uav_yaw_
-                self.circle_initial_xy_ = np.array(self.uav_xy_pos_)
+                self.circle_initial_xy_ = np.array(self.uav_xy_global_pos_)
                 if self.task_kind_ == 1:
                     self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
                 elif self.task_kind_ > 1:
@@ -434,8 +434,8 @@ class ForestMotion:
 
                 if self.turn_before_return_ == True:
                     rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
-                    self.final_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_pos_) + self.uav_xy_pos_
-                    self.turn_uav_xy_pos_ = self.uav_xy_pos_
+                    self.final_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_local_pos_) + self.uav_xy_global_pos_
+                    self.turn_uav_xy_global_pos_ = self.uav_xy_global_pos_
                     #self.turn_uav_yaw_ = self.uav_yaw_
                     self.state_machine_ = self.TURN_STATE_
 

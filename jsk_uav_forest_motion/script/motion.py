@@ -339,7 +339,7 @@ class ForestMotion:
         if self.state_machine_ == self.RETURN_HOME_STATE_:
             if self.turn_before_return_ == False:
                 #use local frame
-                vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_local_pos_ - self.initial_target_tree_xy_local_pos_, self.takeoff_height_, self.initial_yaw_)
+                vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_local_pos_ - self.initial_target_tree_xy_local_pos_ - np.array([self.takeoff_forward_offset_, 0]), self.takeoff_height_, self.initial_yaw_)
             else:
                 #use global fram
                 vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_global_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)

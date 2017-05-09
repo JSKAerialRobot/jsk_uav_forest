@@ -108,8 +108,9 @@ class ForestMotion:
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
-        self.visualization_ = rospy.get_param("~visualization", True)
+        self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 3.0)
 
+        self.visualization_ = rospy.get_param("~visualization", True)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
 
         ## task3 different
@@ -297,7 +298,7 @@ class ForestMotion:
                             nearest_obstacle_id = i
         if nearest_obstacle_id >= 0:
             nearest_obstacle_angle = nearest_obstacle_id * self.tree_cluster_.angle_increment + self.tree_cluster_.angle_min
-            rospy.logwarn("Meet obstacle: [%.3f, %.3f] -> %.3f[m], %.3f[deg] in phase: %s", nearest_obstacle_distance_in_head_direction, nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstacle_id], nearest_obstacle_angle / math.pi * 180.0, self.state_name_[self.state_machine_])
+            # rospy.logwarn("Meet obstacle: [%.3f, %.3f] -> %.3f[m], %.3f[deg] in phase: %s", nearest_obstacle_distance_in_head_direction, nearest_obstacle_distance_to_head_direction, self.tree_cluster_.ranges[nearest_obstacle_id], nearest_obstacle_angle / math.pi * 180.0, self.state_name_[self.state_machine_])
 
             return [True, nearest_obstacle_angle]
         else:
@@ -312,7 +313,10 @@ class ForestMotion:
         if self.state_machine_ == self.INITIAL_STATE_:
             vel_msg.linear.x = vel_msg.linear.y = vel_msg.linear.z = vel_msg.angular.z = 0.0
         if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_global_pos_, self.takeoff_height_, self.initial_yaw_) #hover
+            rot_mat = np.array([[math.cos(self.initial_yaw_), -math.sin(self.initial_yaw_)],[math.sin(self.initial_yaw_), math.cos(self.initial_yaw_)]])
+            takeoff_xy_global_pos_ = self.initial_xy_global_pos_ + np.dot(rot_mat, np.array([self.takeoff_forward_offset_, 0]))
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, takeoff_xy_global_pos_, self.takeoff_height_, self.initial_yaw_) #hover
+
         if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             tree_direction = math.atan2(self.tree_xy_local_pos_[1], self.tree_xy_local_pos_[0])
             vel_msg = self.goPos(self.LOCAL_FRAME_,
@@ -343,7 +347,7 @@ class ForestMotion:
         # obstacle avoidance
         obstacle = self.obstacleDetection()
         if obstacle[0]:
-            print "avoidance activate"
+            # print "avoidance activate"
             ## if nearest obstacle is on drone right side, drone moves left
             if obstacle[1] < 0.0:
                 vel_msg = self.goPos(self.LOCAL_FRAME_, np.array([0.0, self.avoid_vel_]), self.target_z_pos_, self.target_yaw_)

@@ -89,6 +89,7 @@ private:
 
   double uav_tilt_thre_;
   double search_radius_;
+  double max_orthogonal_dist_; /* for deep searching method */
   bool only_target_;
   bool verbose_;
   bool visualization_;

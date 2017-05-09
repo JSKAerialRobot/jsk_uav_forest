@@ -63,6 +63,10 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("tree_radius_max", tree_radius_max_, 0.3);
   nhp_.param("tree_radius_min", tree_radius_min_, 0.08);
 
+  /* deep searching method */
+  nhp_.param("max_orthogonal_dist_", max_orthogonal_dist_, 2.0); // 2[m]
+
+
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
   tracking_control_srv_ = nh_.advertiseService(tracking_control_srv_name_, &TreeTracking::trackingControlCallback, this);
@@ -237,6 +241,9 @@ bool TreeTracking::searchTargetTreeFromDatabase()
   tree_db_.getTrees(trees);
   tf::Vector3 previous_target_tree_pos = target_trees_.back()->getPos();
   float prev_distance_from_home = initial_target_tree_direction_vec_.dot(previous_target_tree_pos) / initial_target_tree_direction_vec_.length();
+  tf::Matrix3x3 rot_mat_;
+  rot_mat_.setRPY(0, 0, M_PI / 2);
+  tf::Vector3 direction_orthogonal_vec = rot_mat_ * initial_target_tree_direction_vec_;
   for(vector<TreeHandlePtr>::iterator it = trees.begin(); it != trees.begin() + tree_db_.validTreeNum(); ++it)
     {
       if (find(target_trees_.begin(), target_trees_.end(), *it)  != target_trees_.end())
@@ -246,9 +253,10 @@ bool TreeTracking::searchTargetTreeFromDatabase()
         }
      
       float distance_from_home = initial_target_tree_direction_vec_.dot((*it)->getPos()) / initial_target_tree_direction_vec_.length();
+      float orthogonal_dist = direction_orthogonal_vec.dot((*it)->getPos()) / direction_orthogonal_vec.length();
       float dist = (previous_target_tree_pos - (*it)->getPos()).length();
 
-      if(dist < min_dist && distance_from_home > prev_distance_from_home)
+      if(dist < min_dist && distance_from_home > prev_distance_from_home && fabs(orthogonal_dist) < max_orthogonal_dist_)
         {
           min_dist = dist;
           target_tree = *it;

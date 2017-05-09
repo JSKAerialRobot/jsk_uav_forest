@@ -58,7 +58,11 @@ bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& t
       /* we assume that the distance of any two trees is more than min_ditance_ */
       if(dist < min_distance_)
 	{
-	  if(!new_tree) ROS_WARN("there are two trees which are to close to each other");
+	  if(verbose_)
+            {
+              if(!new_tree)
+                ROS_WARN("there are two trees which are to close to each other");
+            }
 	  new_tree = false;
 	}
 

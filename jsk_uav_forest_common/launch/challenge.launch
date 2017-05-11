@@ -2,8 +2,8 @@
 <launch>
   <arg name="task_kind" default="2" />
   <arg name="circle_motion_times" default="1" />
-  <arg name="do_mapping" default="False" />
-  <arg name="turn_before_return" default="False" />
+  <arg name="do_mapping" default="True" />
+  <arg name="turn_before_return" default="True" />
   <arg name="do_avoidance" default="True" />
   <arg name="target_num" default="1" />
 

@@ -77,13 +77,13 @@ class ForestMotion:
         self.vel_pub_topic_name_ = rospy.get_param("~vel_pub_topic_name", "cmd_vel")
         self.state_machine_pub_topic_name_ = rospy.get_param("~state_machine_pub_topic_name", "state_machine")
         self.target_pos_pub_topic_name_ = rospy.get_param("~target_pos_pub_topic_name", "uav_target_pos")
+        self.tracking_control_pub_topic_name_ = rospy.get_param("~tracking_control_pub_topic_name", "/tracking_control")
         self.state_visualization_pub_topic_name_ = rospy.get_param("state_visualization_pub_topic_name", "overlay_text")
         self.task_start_sub_topic_name_ = rospy.get_param("~task_start_sub_topic_name", "task_start")
         self.uav_odom_sub_topic_name_ = rospy.get_param("~uav_odom_sub_topic_name", "ground_truth/state")
         self.tree_location_sub_topic_name_ = rospy.get_param("~tree_location_sub_topic_name", "tree_location")
         self.tree_detection_start_pub_topic_name_ = rospy.get_param("~tree_detection_start_pub_topic_name", "detection_start")
         self.tree_cluster_sub_topic_name_ = rospy.get_param("~tree_cluster_sub_topic_name", "scan_clustered")
-        self.tracking_control_service_name_ = rospy.get_param("~tracking_control_service_name", "/tracking_control")
         self.update_target_tree_service_name_ = rospy.get_param("~update_target_tree_service_name", "/update_target_tree")
         self.global_state_name_sub_topic_name_ = rospy.get_param("~global_state_name_sub_topic_name", "state_machine")
         self.set_first_tree_service_name_ = rospy.get_param("~set_first_tree_service_name_", "/set_first_tree")
@@ -129,6 +129,7 @@ class ForestMotion:
         self.vel_pub_ = rospy.Publisher(self.vel_pub_topic_name_, Twist, queue_size = 10)
         self.state_machine_pub_ = rospy.Publisher(self.state_machine_pub_topic_name_, String, queue_size = 10)
         self.target_pos_pub_ = rospy.Publisher(self.target_pos_pub_topic_name_, Odometry, queue_size = 10)
+        self.tracking_control_pub_ = rospy.Publisher(self.tracking_control_pub_topic_name_, Bool, queue_size = 1)
         self.tree_detection_start_pub_ = rospy.Publisher(self.tree_detection_start_pub_topic_name_, Bool, queue_size = 10)
         self.state_visualization_pub_ = rospy.Publisher(self.state_visualization_pub_topic_name_, OverlayText, queue_size = 10)
         self.task_start_sub_ = rospy.Subscriber(self.task_start_sub_topic_name_, Empty, self.taskStartCallback)
@@ -444,12 +445,8 @@ class ForestMotion:
                     self.state_machine_ = self.TURN_STATE_
 
                     # stop tree tracking if necessary
-                    rospy.wait_for_service(self.tracking_control_service_name_)
-                    try:
-                        stop_tracking = rospy.ServiceProxy(self.tracking_control_service_name_, SetBool)
-                        res = stop_tracking(False)
-                    except rospy.ServiceException, e:
-                        print "Service call failed: %s"%e
+                    stop_msg = Bool()
+                    self.tracking_control_pub_.publish(stop_msg)
                 else:
                     self.state_machine_ = self.RETURN_HOME_STATE_
 

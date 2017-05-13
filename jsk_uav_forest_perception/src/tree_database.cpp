@@ -152,6 +152,7 @@ void TreeDataBase::visualization(std_msgs::Header header)
     marker.pose.position.z = marker.scale.z / 2;
     marker.color.r = 0.95;
     marker.color.g = 0.59;
+    if(index == 0) marker.color.g = 0.1; //special color for center tree
     marker.color.b = 0;
     marker.color.a = 0.5;
     msg.markers.push_back(marker);

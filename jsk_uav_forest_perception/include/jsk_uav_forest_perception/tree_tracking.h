@@ -67,12 +67,12 @@ private:
   ros::Subscriber sub_vision_detection_;
   ros::Subscriber sub_uav_odom_;
   ros::Subscriber sub_laser_scan_;
+  ros::Subscriber sub_tracking_control_;
 
   ros::Publisher pub_stop_vision_detection_;
   ros::Publisher pub_tree_location_;
   ros::Publisher pub_tree_global_location_;
 
-  ros::ServiceServer tracking_control_srv_;
   ros::ServiceServer update_target_tree_srv_;
   ros::ServiceServer set_first_tree_srv_;
 
@@ -83,7 +83,7 @@ private:
   string tree_global_location_topic_name_;
   string tree_cluster_topic_name_;
   string stop_detection_topic_name_;
-  string tracking_control_srv_name_;
+  string tracking_control_topic_name_;
   string update_target_tree_srv_name_;
   string set_first_tree_srv_name_;
 
@@ -112,7 +112,7 @@ private:
   void visionDetectionCallback(const geometry_msgs::Vector3StampedConstPtr& vision_detection_msg);
   void laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_msg);
   void uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg);
-  bool trackingControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  void trackingControlCallback(const std_msgs::BoolConstPtr& msg);
   bool updateTargetTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool setFirstTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
 

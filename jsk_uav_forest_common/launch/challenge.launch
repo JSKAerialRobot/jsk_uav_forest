@@ -36,7 +36,8 @@
     <arg name="target_num" value="$(arg target_num)" />
   </include>
 
-  <!-- 2D SLAM -->
-  <include file="$(find jsk_uav_forest_common)/launch/2d_mapping.launch" if="$(arg do_mapping)" />
+  <!-- 2D Mapping -->
+  <node pkg="jsk_uav_forest_perception" type="mapping.py" output="screen" name="mapping_node" if="$(arg do_mapping)">
+  </node>
 
 </launch>

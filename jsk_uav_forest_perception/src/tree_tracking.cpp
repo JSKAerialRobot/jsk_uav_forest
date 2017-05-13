@@ -48,8 +48,8 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("laser_scan_topic_name", laser_scan_topic_name_, string("scan"));
   nhp_.param("tree_location_topic_name", tree_location_topic_name_, string("tree_location"));
   nhp_.param("tree_global_location_topic_name", tree_global_location_topic_name_, string("tree_global_location"));
+  nhp_.param("tracking_control_topic_name", tracking_control_topic_name_, string("/tracking_control"));
   nhp_.param("stop_detection_topic_name", stop_detection_topic_name_, string("/detection_start"));
-  nhp_.param("tracking_control_srv_name", tracking_control_srv_name_, string("/tracking_control"));
   nhp_.param("update_target_tree_srv_name", update_target_tree_srv_name_, string("/update_target_tree"));
   nhp_.param("set_first_tree_srv_name", set_first_tree_srv_name_, string("/set_first_tree"));
 
@@ -69,10 +69,10 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
 
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
-  tracking_control_srv_ = nh_.advertiseService(tracking_control_srv_name_, &TreeTracking::trackingControlCallback, this);
+  sub_tracking_control_ = nh_.subscribe(tracking_control_topic_name_, 1, &TreeTracking::trackingControlCallback, this);
   update_target_tree_srv_ = nh_.advertiseService(update_target_tree_srv_name_, &TreeTracking::updateTargetTreeCallback, this);
   set_first_tree_srv_ = nh_.advertiseService(set_first_tree_srv_name_, &TreeTracking::setFirstTreeCallback, this);
-  
+
   pub_tree_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_location_topic_name_, 1);
   pub_tree_global_location_ = nh_.advertise<geometry_msgs::PointStamped>(tree_global_location_topic_name_, 1);
   pub_stop_vision_detection_ = nh_.advertise<std_msgs::Bool>(stop_detection_topic_name_, 1);
@@ -280,9 +280,9 @@ bool TreeTracking::updateTargetTreeCallback(std_srvs::Trigger::Request &req, std
   return true;
 }
 
-bool TreeTracking::trackingControlCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
+void TreeTracking::trackingControlCallback(const std_msgs::BoolConstPtr& msg)
 {
-  if(req.data)
+  if(msg->data)
     {
       sub_laser_scan_ = nh_.subscribe(laser_scan_topic_name_, 1, &TreeTracking::laserScanCallback, this); //restart
       ROS_INFO("restart tree tracking");
@@ -292,8 +292,6 @@ bool TreeTracking::trackingControlCallback(std_srvs::SetBool::Request &req, std_
       sub_laser_scan_.shutdown(); //stop
       ROS_INFO("stop tree tracking");
     }
-
-  return true;
 }
 
 bool TreeTracking::setFirstTreeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res)

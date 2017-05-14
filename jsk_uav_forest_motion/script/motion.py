@@ -109,6 +109,7 @@ class ForestMotion:
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
         self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 3.0)
+        self.deep_return_dist_ = rospy.get_param("~deep_return_dist", -0.6)
 
         self.visualization_ = rospy.get_param("~visualization", True)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
@@ -260,7 +261,7 @@ class ForestMotion:
         if not self.do_avoidance_:
             return [False]
 
-        if self.state_machine_ != self.APPROACHING_TO_TREE_STATE_ and self.state_machine_ != self.RETURN_HOME_STATE_:
+        if self.state_machine_ != self.TAKEOFF_STATE_ and self.state_machine_ != self.APPROACHING_TO_TREE_STATE_ and self.state_machine_ != self.RETURN_HOME_STATE_:
             return [False]
 
         ## If closed to the target tree within a certain distance, that is safe zone,
@@ -343,7 +344,7 @@ class ForestMotion:
                 vel_msg = self.goPos(self.LOCAL_FRAME_, self.tree_xy_local_pos_ - self.initial_target_tree_xy_local_pos_ - np.array([self.takeoff_forward_offset_, 0]), self.takeoff_height_, self.initial_yaw_)
             else:
                 #use global fram
-                vel_msg = self.goPos(self.GLOBAL_FRAME_, self.initial_xy_global_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
+                vel_msg = self.goPos(self.GLOBAL_FRAME_, self.final_xy_global_pos_ + self.final_target_tree_xy_global_pos_ - self.initial_target_tree_xy_global_pos_, self.takeoff_height_, self.initial_yaw_ + math.pi)
 
         # obstacle avoidance
         obstacle = self.obstacleDetection()
@@ -360,6 +361,8 @@ class ForestMotion:
         #state machine
         if self.state_machine_ == self.INITIAL_STATE_:
             self.initial_xy_global_pos_ = np.array(self.uav_xy_global_pos_)
+            rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
+            self.final_xy_global_pos_ = np.dot(rot_mat, np.array([self.deep_return_dist_,0])) + self.initial_xy_global_pos_
             self.initial_yaw_ = self.uav_yaw_
             if self.use_dji_ == True:
                 self.drone_.takeoff()
@@ -390,7 +393,7 @@ class ForestMotion:
                         self.state_machine_ = self.FINISH_CIRCLE_MOTION_STATE_
                     else:
                         self.state_machine_ = self.START_CIRCLE_MOTION_STATE_
-                    
+
         elif self.state_machine_ == self.START_CIRCLE_MOTION_STATE_:
             if abs(self.circle_initial_accumulated_yaw_ - self.uav_accumulated_yaw_) > 2 * math.pi:
                 self.circle_initial_accumulated_yaw_ = self.uav_accumulated_yaw_
@@ -420,6 +423,7 @@ class ForestMotion:
                                 return
                             else:
                                 self.target_count_ = self.target_num_
+                                rospy.logerr("can not get next target tree")
                         except rospy.ServiceException, e:
                             print "Service call failed: %s"%e
                     

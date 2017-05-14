@@ -143,6 +143,7 @@ class ForestMotion:
         rospy.loginfo("Task Start")
         self.task_start_time_ = rospy.Time.now()
         self.task_start_ = True
+        self.task_start_sub_.unregister()
     
     def odomCallback(self, msg):
         self.odom_ = msg

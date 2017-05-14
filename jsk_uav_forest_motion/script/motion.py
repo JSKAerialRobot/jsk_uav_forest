@@ -315,11 +315,12 @@ class ForestMotion:
         vel_msg = Twist()
         if self.state_machine_ == self.INITIAL_STATE_:
             vel_msg.linear.x = vel_msg.linear.y = vel_msg.linear.z = vel_msg.angular.z = 0.0
-        if self.state_machine_ == self.TAKEOFF_STATE_ or self.state_machine_ == self.TREE_DETECTION_START_STATE_:
+        if self.state_machine_ == self.TAKEOFF_STATE_:
             rot_mat = np.array([[math.cos(self.initial_yaw_), -math.sin(self.initial_yaw_)],[math.sin(self.initial_yaw_), math.cos(self.initial_yaw_)]])
             takeoff_xy_global_pos_ = self.initial_xy_global_pos_ + np.dot(rot_mat, np.array([self.takeoff_forward_offset_, 0]))
-            vel_msg = self.goPos(self.GLOBAL_FRAME_, takeoff_xy_global_pos_, self.takeoff_height_, self.initial_yaw_) #hover
-
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, takeoff_xy_global_pos_, self.takeoff_height_, self.initial_yaw_) 
+        if self.state_machine_ == self.TREE_DETECTION_START_STATE_:
+            vel_msg = self.goPos(self.GLOBAL_FRAME_, self.target_xy_pos_, self.target_z_pos_, self.target_yaw_) #hover
         if self.state_machine_ == self.APPROACHING_TO_TREE_STATE_:
             tree_direction = math.atan2(self.tree_xy_local_pos_[1], self.tree_xy_local_pos_[0])
             vel_msg = self.goPos(self.LOCAL_FRAME_,

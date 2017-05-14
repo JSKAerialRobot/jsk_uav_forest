@@ -23,7 +23,9 @@
     <param name="verbose" value="false" />
     <param name="visualization" value="true" />
     <param name="tree_radius_max" value="0.35" />
-    <param name="search_radius" value="8.0" />
+    <param name="search_radius" value="5.0" />
     <param name="valid_num" value="10" />
-    </node>
+    <param name="searching_method" value="1" /> <!-- 1:narrow 2:deep-->
+    <param name="narrow_searching_radius" value="5.0" />
+  </node>
 </launch>

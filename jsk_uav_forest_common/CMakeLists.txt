@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(jsk_uav_forest_common)
 
 find_package(catkin REQUIRED COMPONENTS
+  std_msgs
   sensor_msgs
   nav_msgs
   visualization_msgs
@@ -28,6 +29,7 @@ add_message_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
    DEPENDENCIES
+   std_msgs
    sensor_msgs
    nav_msgs
    visualization_msgs

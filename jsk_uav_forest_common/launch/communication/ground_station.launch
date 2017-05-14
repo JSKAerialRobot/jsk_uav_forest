@@ -2,7 +2,9 @@
 <launch>
   <arg name="GROUND_STATION_IP" default="10.42.0.35" />
   <arg name="UAV_IP" default="10.42.0.1" />
-  <arg name="PORT" default="16484" />
+  <arg name="HIGH_PORT" default="16484" />
+  <arg name="LOW_PORT" default="1024" />
+  <arg name="rqt_gui" default="True" />
 
   <!-- Ground Station (from UAV) -->
   <node pkg="jsk_network_tools" type="silverhammer_highspeed_receiver.py"
@@ -10,11 +12,25 @@
         name="receiver">
     <param name="message" value="jsk_uav_forest_common/FC2OCSImage" />
     <param name="receive_ip" value="$(arg GROUND_STATION_IP)" />
-    <param name="receive_port" value="$(arg PORT)" />
+    <param name="receive_port" value="$(arg HIGH_PORT)" />
     <param name="topic_prefix" value="" />
   </node>
 
+  <!-- to UAV -->
+  <node pkg="jsk_network_tools" type="silverhammer_lowspeed_streamer.py"
+        output="screen"
+        name="lowspeed_streamer">
+    <remap from="/lowspeed_streamer/input" to="/task_start" />
+    <param name="message" value="std_msgs/Empty" />
+    <param name="to_ip" value="$(arg UAV_IP)" />
+    <param name="to_port" value="$(arg LOW_PORT)" />
+    <param name="send_rate" value="1" />
+    <param name="event_driven" value="True" />
+  </node>
+
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find jsk_uav_forest_common)/launch/communication/groundstation.rviz" respawn="true"/>
+  
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" output="screen" if="$(arg rqt_gui)" args="--perspective-file $(find jsk_uav_forest_common)/launch/jsk_uav_forest.perspective" />
   
   <node pkg="jsk_uav_forest_common" type="tf_broadcaster.py" name="tf_broadcaster" output="screen">
     <param name="uav_odom_topic_name" value="/modified_odom/throttle" />

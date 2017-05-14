@@ -181,3 +181,44 @@ void TreeDataBase::save()
     ofs << (*it)->getPos().x() << " " << (*it)->getPos().y() << " " << (*it)->getRadius() << " " << (*it)->getVote()  << std::endl;
 
 }
+
+bool TreeDataBase::load(string file_name)
+{
+  std::ifstream ifs(file_name.c_str());
+
+  if(ifs.fail())
+    {
+      ROS_ERROR("File do not exist");
+      return false;
+    }
+
+  std::string str;
+  std::stringstream ss_header;
+  std::string header;
+  int tree_num;
+
+  std::getline(ifs, str);
+  ss_header.str(str);
+  ss_header >> header >> tree_num;
+  ROS_INFO("%s: %d", header.c_str(), tree_num);
+
+  /* get the tree data */
+  for(int i = 0; i < tree_num; i++)
+    {
+      std::stringstream ss;
+      std::getline(ifs, str);
+      ss.str(str);
+      float x = 0, y = 0, radius = 0;
+      int vote = 0;
+      ss >> x >> y >> radius >> vote;
+      ROS_INFO("tree_pos: [%f, %f]; radius: %f; vote: %d", x, y, radius, vote);
+      TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, tf::Vector3(x, y, 0)));
+      new_tree->setRadius(radius);
+      new_tree->setVote(vote);
+      add(new_tree);
+    }
+
+  return true;
+}
+
+

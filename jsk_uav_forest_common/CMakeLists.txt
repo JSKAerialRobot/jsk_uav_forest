@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   rqt_gui
   rqt_gui_py
+  jsk_uav_forest_perception
   )
 
 ################################################
@@ -55,6 +56,8 @@ include_directories(
 add_library(image_throttle src/image_throttle.cpp)
 target_link_libraries(image_throttle ${catkin_LIBRARIES})
 
+add_executable(database_server src/database_server.cpp)
+target_link_libraries (database_server ${catkin_LIBRARIES})
 
 #############
 ## Install ##

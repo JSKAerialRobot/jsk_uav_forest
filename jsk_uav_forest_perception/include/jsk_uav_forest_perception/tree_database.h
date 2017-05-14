@@ -68,6 +68,7 @@ public:
   void setRadius(double radius, bool lpf = true);
   const double getRadius(){ return radius_; }
   const tf::Vector3 getPos() { return pos_; }
+  inline void setVote(int vote) {vote_ = vote; }
   inline int getVote() { return vote_; }
 
 private:
@@ -96,6 +97,7 @@ public:
   void update();
   void visualization(std_msgs::Header header);
   void save();
+  bool load(string file_name);
 
   int validTreeNum()
   {

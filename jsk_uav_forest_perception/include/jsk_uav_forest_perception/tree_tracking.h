@@ -50,7 +50,7 @@
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>
 
-/* tree labeling */
+/* tree database */
 #include <jsk_uav_forest_perception/tree_database.h>
 
 using namespace std;

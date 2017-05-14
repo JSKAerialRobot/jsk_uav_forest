@@ -31,6 +31,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS roscpp
+  LIBRARIES tree_tracking
 )
 
 ###########
@@ -56,6 +57,7 @@ target_link_libraries (vision_detection_node ${catkin_LIBRARIES})
 
 add_library(tree_tracking src/tree_tracking.cpp src/tree_database.cpp src/util/circle_detection.cpp)
 target_link_libraries(tree_tracking ${catkin_LIBRARIES})
+
 add_executable(tree_tracking_node src/tree_tracking_node.cpp)
 target_link_libraries (tree_tracking_node ${catkin_LIBRARIES} tree_tracking)
 

@@ -49,7 +49,7 @@ class Mapping:
 
             # get time
             dt_obj = datetime.fromtimestamp(rospy.get_time(), pytz.utc)
-            date_str = dt_obj.strftime("%Y-%m-%d") + '-' + str(dt_obj.hour) + '-' + str(dt_obj.minute)
+            date_str = dt_obj.strftime("%Y-%m-%d") + '-' + str(dt_obj.hour) + '-' + str(dt_obj.minute) + '-map'
 
             # get tf
             trans = None

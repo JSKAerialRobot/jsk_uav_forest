@@ -159,3 +159,25 @@ void TreeDataBase::visualization(std_msgs::Header header)
   }
   pub_visualization_marker_.publish(msg);
 }
+
+
+void TreeDataBase::save()
+{
+  boost::posix_time::ptime t = ros::Time::now().toBoost();
+  boost::gregorian::date d = t.date();
+  std::string date = boost::gregorian::to_iso_extended_string(d);
+  std::ostringstream h_os; h_os << t.time_of_day().hours();
+  std::ostringstream m_os; m_os << t.time_of_day().minutes();
+
+  std::ofstream ofs;
+  ofs.open(std::getenv("HOME") + string("/.ros/") +
+           date + string("-") + h_os.str() + string("-") +
+           m_os.str() + string("-") + string("trees.yaml"));
+
+  ofs << "tree_num: " << (int)trees_.size()  << std::endl;
+
+
+  for (vector<TreeHandlePtr>::iterator it = trees_.begin(); it != trees_.end(); it++)
+    ofs << (*it)->getPos().x() << " " << (*it)->getPos().y() << " " << (*it)->getRadius() << " " << (*it)->getVote()  << std::endl;
+
+}

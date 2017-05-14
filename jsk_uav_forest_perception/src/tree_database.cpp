@@ -159,3 +159,66 @@ void TreeDataBase::visualization(std_msgs::Header header)
   }
   pub_visualization_marker_.publish(msg);
 }
+
+
+void TreeDataBase::save()
+{
+  boost::posix_time::ptime t = ros::Time::now().toBoost();
+  boost::gregorian::date d = t.date();
+  std::string date = boost::gregorian::to_iso_extended_string(d);
+  std::ostringstream h_os; h_os << t.time_of_day().hours();
+  std::ostringstream m_os; m_os << t.time_of_day().minutes();
+
+  std::ofstream ofs;
+  ofs.open(std::getenv("HOME") + string("/.ros/") +
+           date + string("-") + h_os.str() + string("-") +
+           m_os.str() + string("-") + string("trees.yaml"));
+
+  ofs << "tree_num: " << (int)trees_.size()  << std::endl;
+
+
+  for (vector<TreeHandlePtr>::iterator it = trees_.begin(); it != trees_.end(); it++)
+    ofs << (*it)->getPos().x() << " " << (*it)->getPos().y() << " " << (*it)->getRadius() << " " << (*it)->getVote()  << std::endl;
+
+}
+
+bool TreeDataBase::load(string file_name)
+{
+  std::ifstream ifs(file_name.c_str());
+
+  if(ifs.fail())
+    {
+      ROS_ERROR("File do not exist");
+      return false;
+    }
+
+  std::string str;
+  std::stringstream ss_header;
+  std::string header;
+  int tree_num;
+
+  std::getline(ifs, str);
+  ss_header.str(str);
+  ss_header >> header >> tree_num;
+  ROS_INFO("%s: %d", header.c_str(), tree_num);
+
+  /* get the tree data */
+  for(int i = 0; i < tree_num; i++)
+    {
+      std::stringstream ss;
+      std::getline(ifs, str);
+      ss.str(str);
+      float x = 0, y = 0, radius = 0;
+      int vote = 0;
+      ss >> x >> y >> radius >> vote;
+      ROS_INFO("tree_pos: [%f, %f]; radius: %f; vote: %d", x, y, radius, vote);
+      TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, tf::Vector3(x, y, 0)));
+      new_tree->setRadius(radius);
+      new_tree->setVote(vote);
+      add(new_tree);
+    }
+
+  return true;
+}
+
+

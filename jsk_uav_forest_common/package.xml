@@ -19,12 +19,13 @@
   <build_depend>rospy</build_depend>
   <build_depend>rqt_gui</build_depend>
   <build_depend>rqt_gui_py</build_depend>
+  <build_depend>jsk_uav_forest_perception</build_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>nodelet_topic_tools</run_depend>
   <run_depend>pluginlib</run_depend>
   <run_depend>nodelet</run_depend>
-  
+  <run_depend>jsk_uav_forest_perception</run_depend>
   <run_depend>dji_sdk</run_depend>
   <run_depend>guidance</run_depend>
   <run_depend>urg_node</run_depend>

@@ -23,39 +23,32 @@ catkin build
 
 ## how to run program in simulation
 
-- run in gazebo:
-```
-$ roslaunch jsk_uav_forest_simulation forest_simulation.launch
-```
-
 - run in gazebo by manual operation
 ```
 $ roslaunch jsk_uav_forest_simulation forest_simulation.launch manual:=true
 ```
 
 - run in gazebo by autonomous perception and motion
+1. task1 
 ```
-$ roslaunch jsk_uav_forest_simulation forest_simulation.launch
+$ roslaunch jsk_uav_forest_simulation forest_simulation.launch task_kind:=1
 ```
-  start by calling a rosservice
+2. task2
 ```
-$ rosservice call /task_start true
+roslaunch jsk_uav_forest_simulation forest_simulation.launch task_kind:=2 circle_motion_times:=2
+```
+3. task3
+```
+roslaunch jsk_uav_forest_simulation forest_simulation.launch task_kind:=3 target_num:=3
 ```
 
-
-## how to activate plannar
-
-- arg plannar means whether to add motion planning, arg collision means whether to add obstacle which will cause collision into simulation.
-- When adding obstacles, remember not to block the view from drone to red tree:
-```
-$ roslaunch jsk_uav_forest_simulation forest_simulation.launch plannar:=true collision:=true
-```
+start by clicking the ```start``` button in the rqt_gui
 
 
 ## forest challenge (using DJI M100 + DJI Guidance + Pointgrey Chameleon3 + Hokuyo UST20LX)
 1. integrated launch file in UAV
 ```
-$ roslaunch jsk_uav_forest_common challenge.launch
+$ roslaunch jsk_uav_forest_common challenge.launch (same options with the above cases according to different tasks)
 ```
 
 2. remote communication in UAV
@@ -70,3 +63,14 @@ $ roslaunch jsk_uav_forest_common communication2ground_station.launch UAV_IP:=10
 ```
     10.42.0.XXX is the IP address of you rmeote PC. 
 
+4. start the task
+```
+$ rostopic pub /task_start std_msgs/Empty "{}"
+```
+
+## view the result
+```
+$ roslaunch jsk_uav_forest_common result.launch
+```
+
+default data is the result from the gazebo.

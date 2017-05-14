@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="file_name" default="test" />
+  <arg name="tf_yaml_file" default="$(find jsk_uav_forest_common)/data/$(arg file_name)-map.yaml" />
+  <arg name="tree_yaml_file" default="$(find jsk_uav_forest_common)/data/$(arg file_name)-trees.yaml" />
+
+  <!-- tree data -->
+  <node pkg="jsk_uav_forest_common" type="database_server" name="tree_database_server" output="screen" >
+    <param name="valid_num" value="10" />
+    <param name="tree_database_file_name" value="$(arg tree_yaml_file)" />
+    <rosparam file="$(arg tf_yaml_file)" command="load" />
+  </node>
+
+  <!-- 2d map -->
+  <node pkg="map_server" type="map_server" name="map_server" output="screen" args="$(arg tf_yaml_file)"/>
+
+  <!-- rviz -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find jsk_uav_forest_common)/launch/result_viewer.rviz"  respawn="true"/>
+
+</launch>

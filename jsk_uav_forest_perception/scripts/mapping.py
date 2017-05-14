@@ -13,6 +13,7 @@ import subprocess
 from datetime import datetime
 from std_msgs.msg import Bool
 import tf
+import pytz
 
 class Mapping:
     def init(self):
@@ -46,9 +47,9 @@ class Mapping:
         else:
             rospy.logwarn("Stop mapping");
 
-            # get time 
-            dt_obj = datetime.fromtimestamp(rospy.get_time())
-            date_str = dt_obj.strftime("%Y-%m-%d-%H-%M")
+            # get time
+            dt_obj = datetime.fromtimestamp(rospy.get_time(), pytz.utc)
+            date_str = dt_obj.strftime("%Y-%m-%d") + '-' + str(dt_obj.hour) + '-' + str(dt_obj.minute) + '-map'
 
             # get tf
             trans = None

@@ -290,6 +290,7 @@ void TreeTracking::trackingControlCallback(const std_msgs::BoolConstPtr& msg)
   else
     {
       sub_laser_scan_.shutdown(); //stop
+      tree_db_.save(); //save the tree data to the file
       ROS_INFO("stop tree tracking");
     }
 }

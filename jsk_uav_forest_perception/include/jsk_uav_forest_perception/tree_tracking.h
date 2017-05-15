@@ -88,12 +88,12 @@ private:
   string set_first_tree_srv_name_;
 
   double uav_tilt_thre_;
-  double search_radius_;
   double max_orthogonal_dist_; /* for deep searching method */
   bool only_target_;
   bool verbose_;
   bool visualization_;
   bool tree_circle_fitting_;
+  double first_tree_pos_margin_;
   double tree_radius_max_, tree_radius_min_;
   double tree_scan_angle_thre_;
   double tree_circle_regulation_thre_;

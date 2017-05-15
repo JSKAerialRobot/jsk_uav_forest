@@ -58,6 +58,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("verbose", verbose_, false);
   nhp_.param("visualization", visualization_, false);
   nhp_.param("tree_circle_fitting", tree_circle_fitting_, true);
+  nhp_.param("first_tree_pos_margin", first_tree_pos_margin_, 0.3); //should be positive
 
   /* tree circle fitting */
   nhp_.param("tree_radius_max", tree_radius_max_, 0.3);
@@ -69,7 +70,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   /* narrow searching method */
   nhp_.param("narrow_searching_radius", narrow_searching_radius_, 5.0);
   /* deep searching method */
-  nhp_.param("max_orthogonal_dist_", max_orthogonal_dist_, 3.0); // 2[m]
+  nhp_.param("max_orthogonal_dist_", max_orthogonal_dist_, 3.0);
 
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
@@ -94,6 +95,7 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   rotation.setRPY(0, 0, vision_detection_msg->vector.y + uav_yaw_);
   tf::Vector3 target_tree_global_location = uav_odom_ + rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
   initial_target_tree_direction_vec_ = rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
+  initial_target_tree_direction_vec_ /= initial_target_tree_direction_vec_.length(); //normalize
 
   /* start laesr-only subscribe */
   sub_laser_scan_ = nh_.subscribe(laser_scan_topic_name_, 1, &TreeTracking::laserScanCallback, this);
@@ -104,7 +106,6 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   tree_db_.setCenterTree(new_tree);
   target_trees_.resize(0);
   target_trees_.push_back(new_tree);
-
 
   /* set the search center as the first target tree(with color marker) pos */
   search_center_ = target_tree_global_location;
@@ -192,9 +193,9 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 	  tf::Matrix3x3 rotation; rotation.setRPY(0, 0, uav_yaw_);
 	  tf::Vector3 tree_center_global_location = uav_odom_ + rotation * tf::Vector3(tree_center_pos.x(), tree_center_pos.y(), 0);
 	  tf::Vector3 initial_target_tree_pos = target_trees_.at(0)->getPos();
-	  double projected_length_from_initial_target = initial_target_tree_direction_vec_.dot(tree_center_global_location - initial_target_tree_pos) / initial_target_tree_direction_vec_.length();	  
+	  double projected_length_from_initial_target = initial_target_tree_direction_vec_.dot(tree_center_global_location - initial_target_tree_pos);	  
 
-	  if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_ && fabs((scan_angle_real - scan_angle_virtual) / scan_angle_real) < tree_scan_angle_thre_ && regulation < tree_circle_regulation_thre_ && projected_length_from_initial_target > 0)
+	  if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_ && fabs((scan_angle_real - scan_angle_virtual) / scan_angle_real) < tree_scan_angle_thre_ && regulation < tree_circle_regulation_thre_ && projected_length_from_initial_target > -first_tree_pos_margin_)
             {
 	      target_update += tree_db_.updateSingleTree(tree_center_global_location, tree_radius, only_target_);
             }
@@ -250,7 +251,7 @@ bool TreeTracking::searchTargetTreeFromDatabase()
   if (searching_method_ == 1) 
     {
       float min_angle = 1e6;
-      tf::Vector3 initial_target_tree_pos = target_trees_.at(0)->getPos();
+      tf::Vector3 initial_target_tree_pos = target_trees_.at(0)->getPos() - initial_target_tree_direction_vec_ * first_tree_pos_margin_;
       for(vector<TreeHandlePtr>::iterator it = trees.begin(); it != trees.begin() + tree_db_.validTreeNum(); ++it)
 	{
 	  if (find(target_trees_.begin(), target_trees_.end(), *it)  != target_trees_.end())
@@ -260,8 +261,8 @@ bool TreeTracking::searchTargetTreeFromDatabase()
 	    }
 	  
 	  tf::Vector3 from_initial_target_vec = (*it)->getPos() - initial_target_tree_pos;
-	  float distance_from_initial_target = initial_target_tree_direction_vec_.dot(from_initial_target_vec) / initial_target_tree_direction_vec_.length();
-	  float angle = acos(orthogonal_vec.dot(from_initial_target_vec) / (orthogonal_vec.length() * from_initial_target_vec.length()));
+	  float distance_from_initial_target = initial_target_tree_direction_vec_.dot(from_initial_target_vec);
+	  float angle = acos(orthogonal_vec.dot(from_initial_target_vec) / from_initial_target_vec.length());
 	  if(angle < min_angle && distance_from_initial_target > 0 && from_initial_target_vec.length() < narrow_searching_radius_)
 	    {
 	      min_angle = angle;
@@ -281,8 +282,8 @@ bool TreeTracking::searchTargetTreeFromDatabase()
 	      continue;
 	    }
 	  tf::Vector3 from_previous_target_vec = (*it)->getPos() - previous_target_tree_pos;
-	  float distance_from_prev = initial_target_tree_direction_vec_.dot(from_previous_target_vec)/initial_target_tree_direction_vec_.length();
-	  float orthogonal_dist = orthogonal_vec.dot((*it)->getPos()) / orthogonal_vec.length();
+	  float distance_from_prev = initial_target_tree_direction_vec_.dot(from_previous_target_vec);
+	  float orthogonal_dist = orthogonal_vec.dot((*it)->getPos());
 	  float dist = (previous_target_tree_pos - (*it)->getPos()).length();
 	  
 	  if(dist < min_dist && distance_from_prev > 0 && fabs(orthogonal_dist) < max_orthogonal_dist_)

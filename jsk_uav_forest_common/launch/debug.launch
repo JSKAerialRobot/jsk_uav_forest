@@ -18,7 +18,7 @@
     <param name="guidance_vel_weight" value="0.9" />
   </node>
 
-  <node pkg="jsk_uav_forest_common" type="tf_broadcaster.py" name="tf_broadcaster" output="screen" >
+  <node pkg="jsk_uav_forest_common" type="tf_broadcaster.py" name="tf_broadcaster" output="screen" if="$(arg no_odom)">
     <param name="uav_odom_topic_name" value="/modified_odom" if="$(arg use_dji)" />
     <param name="uav_odom_topic_name" value="/ground_truth/state" unless="$(arg use_dji)" />
   </node>
@@ -44,15 +44,6 @@
     <param name="verbose" value="false" />
     <param name="uav_tilt_thre" value="0.07" />
     <param name="visualization" value="true" />
-
-  </node>
-
-
-  ######### Obstacle ################
-  <node pkg="jsk_uav_forest_motion" type="motion_plannar_client.py" name="motion_plannar" output="screen" args="false">
-    <param name="task_kind" value="2" />
-    <param name="uav_odom_sub_topic_name" value="/modified_odom"/>
-    <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
   </node>
 
   ######## 2D SLAM ##################

@@ -59,14 +59,18 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("verbose", verbose_, false);
   nhp_.param("visualization", visualization_, false);
   nhp_.param("tree_circle_fitting", tree_circle_fitting_, true);
+
+  /* tree circle fitting */
   nhp_.param("tree_radius_max", tree_radius_max_, 0.3);
   nhp_.param("tree_radius_min", tree_radius_min_, 0.08);
+  nhp_.param("tree_scan_angle_thre", tree_scan_angle_thre_, 0.1);
+  nhp_.param("tree_circle_regulation_thre", tree_circle_regulation_thre_, 0.005);
+
   nhp_.param("searching_method", searching_method_, 1); //1 narrow 2 deep
+  /* narrow searching method */
   nhp_.param("narrow_searching_radius", narrow_searching_radius_, 5.0);
-
   /* deep searching method */
-  nhp_.param("max_orthogonal_dist_", max_orthogonal_dist_, 2.0); // 2[m]
-
+  nhp_.param("max_orthogonal_dist_", max_orthogonal_dist_, 3.0); // 2[m]
 
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);
@@ -105,7 +109,6 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   search_center_ = target_tree_global_location;
   
   sub_vision_detection_.shutdown(); //stop
-
 }
 
 void TreeTracking::uavOdomCallback(const nav_msgs::OdometryConstPtr& uav_msg)
@@ -169,12 +172,14 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
       if (tree_circle_fitting_)
         {
           vector<tf::Vector3> points;
+	  int scan_point_num = 0;
           for (int i = *it; !isnan(scan_msg->ranges[i]) && i < scan_msg->ranges.size(); i++)
             {
               double r = fabs(scan_msg->ranges[i]);
               double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
               tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
               points.push_back(point);
+	      scan_point_num++;
             }
           for (int i = (*it) - 1; !isnan(scan_msg->ranges[i]) && i > 0; i--)
             {
@@ -182,11 +187,15 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
               double theta = scan_msg->angle_min + (scan_msg->angle_increment) * i;
               tf::Vector3 point(r * cos(theta), r * sin(theta), 0);
               points.push_back(point);
+	      scan_point_num++;
             }
-          tf::Vector3 tree_center_pos;
-          double tree_radius;
-          CircleDetection::circleFitting(points, tree_center_pos, tree_radius);
-	  if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_)
+	  /* calc position and radius */          
+	  tf::Vector3 tree_center_pos; double tree_radius, regulation;
+	  CircleDetection::circleFitting(points, tree_center_pos, tree_radius, regulation);
+	  /* angle filter */
+	  double scan_angle_real = scan_point_num * scan_msg->angle_increment;
+	  double scan_angle_virtual = M_PI - 2 * acos(tree_radius / tree_center_pos.length()); 
+	  if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_ && fabs((scan_angle_real - scan_angle_virtual) / scan_angle_real) < tree_scan_angle_thre_ && regulation < tree_circle_regulation_thre_)
             {
               tf::Matrix3x3 rotation;
               rotation.setRPY(0, 0, uav_yaw_);

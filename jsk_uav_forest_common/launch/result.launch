@@ -6,7 +6,7 @@
 
   <!-- tree data -->
   <node pkg="jsk_uav_forest_common" type="database_server" name="tree_database_server" output="screen" >
-    <param name="valid_num" value="10" />
+    <param name="valid_num" value="15" />
     <param name="tree_database_file_name" value="$(arg tree_yaml_file)" />
     <rosparam file="$(arg tf_yaml_file)" command="load" />
   </node>

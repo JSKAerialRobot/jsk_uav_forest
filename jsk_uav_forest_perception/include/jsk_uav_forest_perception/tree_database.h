@@ -95,9 +95,12 @@ public:
   bool updateSingleTree(const tf::Vector3& tree_pos, const double& tree_radius, const bool only_target = false);
 
   void update();
+  void setCenterTree(TreeHandlePtr center_tree) { center_tree_ = center_tree; }
   void visualization(std_msgs::Header header);
   void save();
   bool load(string file_name);
+
+  int getIndex(TreeHandlePtr target_tree);
 
   int validTreeNum()
   {
@@ -120,5 +123,6 @@ private:
 
   /* the set for trees */
   vector<TreeHandlePtr> trees_;
+  TreeHandlePtr center_tree_;
 };
 #endif

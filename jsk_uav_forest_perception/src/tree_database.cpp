@@ -153,7 +153,7 @@ void TreeDataBase::visualization(std_msgs::Header header)
     marker.pose.position.z = marker.scale.z / 2;
     marker.color.r = 0.95;
     marker.color.g = 0.59;
-    if(index == 0) marker.color.g = 0.1; //special color for center tree
+    if(*it == center_tree_) marker.color.g = 0.1; //special color for center tree
     marker.color.b = 0;
     marker.color.a = 0.5;
     msg.markers.push_back(marker);
@@ -176,8 +176,8 @@ void TreeDataBase::save()
            date + string("-") + h_os.str() + string("-") +
            m_os.str() + string("-") + string("trees.yaml"));
 
-  ofs << "tree_num: " << (int)trees_.size()  << std::endl;
-
+  int center_index = getIndex(center_tree_);
+  ofs << "tree_num: " << (int)trees_.size()  << " " <<  "center_tree: " << center_index << std::endl;
 
   for (vector<TreeHandlePtr>::iterator it = trees_.begin(); it != trees_.end(); it++)
     ofs << (*it)->getPos().x() << " " << (*it)->getPos().y() << " " << (*it)->getRadius() << " " << (*it)->getVote()  << std::endl;
@@ -196,13 +196,14 @@ bool TreeDataBase::load(string file_name)
 
   std::string str;
   std::stringstream ss_header;
-  std::string header;
+  std::string header1, header2;
   int tree_num;
+  int center_tree_index;
 
   std::getline(ifs, str);
   ss_header.str(str);
-  ss_header >> header >> tree_num;
-  ROS_INFO("%s: %d", header.c_str(), tree_num);
+  ss_header >> header1 >> tree_num >> header2 >> center_tree_index;
+  ROS_INFO("%s: %d, %s: %d", header1.c_str(), tree_num, header2.c_str(), center_tree_index);
 
   /* get the tree data */
   for(int i = 0; i < tree_num; i++)
@@ -218,9 +219,23 @@ bool TreeDataBase::load(string file_name)
       new_tree->setRadius(radius);
       new_tree->setVote(vote);
       add(new_tree);
+
+      if(i == center_tree_index) center_tree_ = new_tree;
     }
 
   return true;
 }
+
+int  TreeDataBase::getIndex(TreeHandlePtr target_tree)
+{
+  int i = 0;
+  for (auto &tree : trees_)
+    {
+      if(tree == target_tree) return i;
+      i++;
+    }
+  return -1;
+}
+
 
 

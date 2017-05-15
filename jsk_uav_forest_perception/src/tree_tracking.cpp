@@ -102,12 +102,14 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   /* add target tree to the tree data base */
   TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, target_tree_global_location));
   tree_db_.add(new_tree);
+  tree_db_.setCenterTree(new_tree);
   target_trees_.resize(0);
   target_trees_.push_back(new_tree);
 
+
   /* set the search center as the first target tree(with color marker) pos */
   search_center_ = target_tree_global_location;
-  
+
   sub_vision_detection_.shutdown(); //stop
 }
 

@@ -94,6 +94,8 @@ private:
   bool verbose_;
   bool visualization_;
   bool tree_circle_fitting_;
+  double tree_scan_angle_thre_;
+  double tree_circle_regulation_thre_;
 
   TreeDataBase tree_db_;
   vector<TreeHandlePtr> target_trees_;

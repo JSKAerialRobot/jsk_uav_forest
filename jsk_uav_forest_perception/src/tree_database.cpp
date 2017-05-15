@@ -94,6 +94,7 @@ bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& t
   if(new_tree && !only_target)
     {
       TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, tree_pos));
+      new_tree->setRadius(tree_radius);
       add(new_tree);
       return true;
     }

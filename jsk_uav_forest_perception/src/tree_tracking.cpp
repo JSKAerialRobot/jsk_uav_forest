@@ -187,13 +187,16 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 	  CircleDetection::circleFitting(points, tree_center_pos, tree_radius, regulation);
 	  /* angle filter */
 	  double scan_angle_real = scan_point_num * scan_msg->angle_increment;
-	  double scan_angle_virtual = M_PI - 2 * acos(tree_radius / tree_center_pos.length()); 
-	  if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_ && fabs((scan_angle_real - scan_angle_virtual) / scan_angle_real) < tree_scan_angle_thre_ && regulation < tree_circle_regulation_thre_)
+	  double scan_angle_virtual = M_PI - 2 * acos(tree_radius / tree_center_pos.length());
+	  /* tree position filter */
+	  tf::Matrix3x3 rotation; rotation.setRPY(0, 0, uav_yaw_);
+	  tf::Vector3 tree_center_global_location = uav_odom_ + rotation * tf::Vector3(tree_center_pos.x(), tree_center_pos.y(), 0);
+	  tf::Vector3 initial_target_tree_pos = target_trees_.at(0)->getPos();
+	  double projected_length_from_initial_target = initial_target_tree_direction_vec_.dot(tree_center_global_location - initial_target_tree_pos) / initial_target_tree_direction_vec_.length();	  
+
+	  if (tree_radius > tree_radius_min_ && tree_radius < tree_radius_max_ && fabs((scan_angle_real - scan_angle_virtual) / scan_angle_real) < tree_scan_angle_thre_ && regulation < tree_circle_regulation_thre_ && projected_length_from_initial_target > 0)
             {
-              tf::Matrix3x3 rotation;
-              rotation.setRPY(0, 0, uav_yaw_);
-              tf::Vector3 tree_center_global_location = uav_odom_ + rotation * tf::Vector3(tree_center_pos.x(), tree_center_pos.y(), 0);
-              target_update += tree_db_.updateSingleTree(tree_center_global_location, tree_radius, only_target_);
+	      target_update += tree_db_.updateSingleTree(tree_center_global_location, tree_radius, only_target_);
             }
           else
             {

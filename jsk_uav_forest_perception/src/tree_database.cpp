@@ -163,7 +163,8 @@ void TreeDataBase::visualization(std_msgs::Header header)
 
 void TreeDataBase::save()
 {
-  boost::posix_time::ptime t = ros::Time::now().toBoost();
+  //boost::posix_time::ptime t = ros::Time::now().toBoost();
+  boost::posix_time::ptime t = boost::posix_time::second_clock::local_time();
   boost::gregorian::date d = t.date();
   std::string date = boost::gregorian::to_iso_extended_string(d);
   std::ostringstream h_os; h_os << t.time_of_day().hours();

@@ -54,7 +54,6 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("set_first_tree_srv_name", set_first_tree_srv_name_, string("/set_first_tree"));
 
   nhp_.param("uav_tilt_thre", uav_tilt_thre_, 0.17); //[rad] = 10[deg]
-  nhp_.param("search_radius", search_radius_, 10.0); // 12[m]
   nhp_.param("only_target", only_target_, false);
   nhp_.param("verbose", verbose_, false);
   nhp_.param("visualization", visualization_, false);
@@ -158,14 +157,6 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
       tf::Matrix3x3 rotation;
       rotation.setRPY(0, 0, *it * scan_msg->angle_increment + scan_msg->angle_min + uav_yaw_);
       tree_global_location = uav_odom_ + rotation * tf::Vector3(scan_msg->ranges[*it], 0, 0);
-
-      /* omit, if the tree is not within the search area */
-      if((search_center_ - tree_global_location).length() > search_radius_)
-        {
-          if(verbose_)
-            cout << "tree [" << tree_global_location.x() << ", " << tree_global_location.y() << "] is to far from the search center [" << search_center_.x() << ", " << search_center_.y() << "]" << endl;
-          continue;
-        }
 
       /* add tree to the database */
       if(verbose_) cout << "Scan input tree No." << distance(cluster_index.begin(), it) << ": start update" << endl;

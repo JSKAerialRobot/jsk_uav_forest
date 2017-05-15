@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import time
 import sys
 import os
 import rospy
 import math
 import signal
+import time
 import numpy as np
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import Bool
@@ -48,7 +48,7 @@ class Mapping:
             rospy.logwarn("Stop mapping");
 
             # get time
-            dt_obj = datetime.fromtimestamp(rospy.get_time(), pytz.utc)
+            dt_obj = datetime.fromtimestamp(time.time())
             date_str = dt_obj.strftime("%Y-%m-%d") + '-' + str(dt_obj.hour) + '-' + str(dt_obj.minute) + '-map'
 
             # get tf
@@ -67,15 +67,16 @@ class Mapping:
             # save map
             self.saving_process = subprocess.Popen(["rosrun", "map_server", "map_saver", "-f", date_str])
 
-            time.sleep(1)
-            self.mapping_process.send_signal(signal.SIGINT)
-
+            time.sleep(2)
             #save tf
             f = open(os.environ['HOME'] + '/.ros/' + date_str + '.yaml', 'a')
             f.write('trans: [' + str(trans[0]) + ', '  + str(trans[1]) + ', ' + str(trans[2]) +']\n')
             f.write('rot: [' + str(rot[0]) + ', '  + str(rot[1]) + ', ' + str(rot[2]) + ', ' + str(rot[3]) + ']\n')
             f.close()
             self.mapping = False;
+
+
+            self.mapping_process.send_signal(signal.SIGINT)
 
 if __name__ == '__main__':
     try:

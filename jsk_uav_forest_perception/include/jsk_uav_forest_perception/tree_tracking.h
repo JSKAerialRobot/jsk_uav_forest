@@ -94,8 +94,12 @@ private:
   bool verbose_;
   bool visualization_;
   bool tree_circle_fitting_;
+  double tree_radius_max_, tree_radius_min_;
   double tree_scan_angle_thre_;
   double tree_circle_regulation_thre_;
+
+  int searching_method_;
+  double narrow_searching_radius_;
 
   TreeDataBase tree_db_;
   vector<TreeHandlePtr> target_trees_;
@@ -104,10 +108,7 @@ private:
   tf::Vector3 uav_odom_;
   float uav_roll_, uav_pitch_, uav_yaw_;
   tf::Vector3 initial_target_tree_direction_vec_;
-
-  //temp
-  double tree_radius_max_, tree_radius_min_;
-
+ 
   void subscribe();
   void unsubscribe();
 

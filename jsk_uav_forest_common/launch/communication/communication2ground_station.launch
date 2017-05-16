@@ -39,6 +39,10 @@
     <remap from="/modified_odom_throttle" to="/modified_odom/throttle" />
   </node>
 
+  <node pkg="topic_tools" type="throttle" name="tree_location_throttle" args="messages /tree_location 1.0" >
+    <remap from="/tree_location_throttle" to="/tree_location/throttle" />
+  </node>
+
   <!-- UAV to Ground Station -->
   <node pkg="jsk_network_tools" type="silverhammer_highspeed_streamer.py"
         name="highspeed_streamer">

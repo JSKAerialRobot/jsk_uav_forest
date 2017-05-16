@@ -3,3 +3,4 @@ sensor_msgs/CompressedImage remote__image__compressed
 jsk_rviz_plugins/OverlayText overlay_text__throttle
 visualization_msgs/MarkerArray visualization_marker__throttle
 nav_msgs/Odometry modified_odom__throttle
+geometry_msgs/PointStamped tree_location__throttle

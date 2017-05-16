@@ -73,8 +73,8 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("searching_method", searching_method_, 1); //1 narrow 2 deep
   /* narrow searching method */
   nhp_.param("narrow_searching_radius", narrow_searching_radius_, 5.0);
+  nhp_.param("narrow_angle_diff_min", narrow_angle_diff_min_, 0.1);
   /* deep searching method */
-
   nhp_.param("max_orthogonal_dist_", max_orthogonal_dist_, 3.0);
 
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
@@ -273,6 +273,13 @@ bool TreeTracking::searchTargetTreeFromDatabase()
     {
       float min_angle = 1e6;
       tf::Vector3 initial_target_tree_pos = target_trees_.at(0)->getPos() - initial_target_tree_direction_vec_ * first_tree_pos_margin_;
+      float previous_target_angle = 0;
+      if (target_trees_.size() != 1)
+        {
+          tf::Vector3 previous_target_from_initial_target_vec = target_trees_.back()->getPos() - initial_target_tree_pos;
+          previous_target_angle = acos(orthogonal_vec.dot(previous_target_from_initial_target_vec) / previous_target_from_initial_target_vec.length());
+        }
+
       for(vector<TreeHandlePtr>::iterator it = trees.begin(); it != trees.begin() + tree_db_.validTreeNum(); ++it)
 	{
 	  if (find(target_trees_.begin(), target_trees_.end(), *it)  != target_trees_.end())
@@ -284,7 +291,7 @@ bool TreeTracking::searchTargetTreeFromDatabase()
 	  tf::Vector3 from_initial_target_vec = (*it)->getPos() - initial_target_tree_pos;
 	  float distance_from_initial_target = initial_target_tree_direction_vec_.dot(from_initial_target_vec);
 	  float angle = acos(orthogonal_vec.dot(from_initial_target_vec) / from_initial_target_vec.length());
-	  if(angle < min_angle && distance_from_initial_target > 0 && from_initial_target_vec.length() < narrow_searching_radius_)
+	  if(angle < min_angle && distance_from_initial_target > 0 && from_initial_target_vec.length() < narrow_searching_radius_ && angle > previous_target_angle + narrow_angle_diff_min_)
 	    {
 	      min_angle = angle;
 	      target_tree = *it;

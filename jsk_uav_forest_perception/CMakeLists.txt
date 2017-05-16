@@ -54,6 +54,7 @@ add_dependencies(vision_detection_pluginlib ${PROJECT_NAME}_gencfg)
 
 add_executable(vision_detection_node src/vision_detection.cpp)
 target_link_libraries (vision_detection_node ${catkin_LIBRARIES})
+add_dependencies(vision_detection_node ${PROJECT_NAME}_gencfg)
 
 add_library(tree_tracking src/tree_tracking.cpp src/tree_database.cpp src/util/circle_detection.cpp)
 target_link_libraries(tree_tracking ${catkin_LIBRARIES})

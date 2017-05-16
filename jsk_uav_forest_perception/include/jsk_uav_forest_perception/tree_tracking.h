@@ -103,7 +103,8 @@ private:
 
   int searching_method_;
   double narrow_searching_radius_;
-
+  double narrow_angle_diff_min_;
+  
   TreeDataBase tree_db_;
   vector<TreeHandlePtr> target_trees_;
 

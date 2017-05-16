@@ -72,6 +72,7 @@ private:
   ros::Publisher pub_stop_vision_detection_;
   ros::Publisher pub_tree_location_;
   ros::Publisher pub_tree_global_location_;
+  ros::Publisher pub_database_control_;
 
   ros::ServiceServer update_target_tree_srv_;
   ros::ServiceServer set_first_tree_srv_;
@@ -79,6 +80,7 @@ private:
   string uav_odom_topic_name_;
   string laser_scan_topic_name_;
   string vision_detection_topic_name_;
+  string database_control_topic_name_;
   string tree_location_topic_name_;
   string tree_global_location_topic_name_;
   string tree_cluster_topic_name_;
@@ -97,6 +99,7 @@ private:
   double tree_radius_max_, tree_radius_min_;
   double tree_scan_angle_thre_;
   double tree_circle_regulation_thre_;
+  double first_tree_dist_thresh_;
 
   int searching_method_;
   double narrow_searching_radius_;
@@ -104,6 +107,7 @@ private:
   TreeDataBase tree_db_;
   vector<TreeHandlePtr> target_trees_;
 
+  bool start_database_;
   tf::Vector3 search_center_;
   tf::Vector3 uav_odom_;
   float uav_roll_, uav_pitch_, uav_yaw_;

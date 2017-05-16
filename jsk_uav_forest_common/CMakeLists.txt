@@ -4,6 +4,7 @@ project(jsk_uav_forest_common)
 find_package(catkin REQUIRED COMPONENTS
   std_msgs
   sensor_msgs
+  geometry_msgs
   nav_msgs
   visualization_msgs
   jsk_rviz_plugins
@@ -31,6 +32,7 @@ generate_messages(
    DEPENDENCIES
    std_msgs
    sensor_msgs
+   geometry_msgs
    nav_msgs
    visualization_msgs
    jsk_rviz_plugins

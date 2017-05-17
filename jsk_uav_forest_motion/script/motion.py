@@ -110,7 +110,8 @@ class ForestMotion:
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
         self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 4.0)
         self.deep_return_dist_ = rospy.get_param("~deep_return_dist", -0.6)
-
+        self.turn_radius_offset_ = rospy.get_param("~turn_radius_offset", -1.0)
+        
         self.visualization_ = rospy.get_param("~visualization", True)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
 
@@ -448,7 +449,8 @@ class ForestMotion:
                 if self.turn_before_return_ == True:
                     rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
                     self.final_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_local_pos_) + self.uav_xy_global_pos_
-                    self.turn_uav_xy_global_pos_ = self.uav_xy_global_pos_
+                    rot_mat = np.array([[math.cos(self.initial_yaw_), -math.sin(self.initial_yaw_)],[math.sin(self.initial_yaw_), math.cos(self.initial_yaw_)]])
+                    self.turn_uav_xy_global_pos_ = np.dot(rot_mat, np.array([self.turn_radius_offset_, 0])) + self.uav_xy_global_pos_
                     #self.turn_uav_yaw_ = self.uav_yaw_
                     self.state_machine_ = self.TURN_STATE_
 

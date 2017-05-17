@@ -108,9 +108,10 @@ class ForestMotion:
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
-        self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 3.0)
+        self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 4.0)
         self.deep_return_dist_ = rospy.get_param("~deep_return_dist", -0.6)
-
+        self.turn_radius_offset_ = rospy.get_param("~turn_radius_offset", -1.0)
+        
         self.visualization_ = rospy.get_param("~visualization", True)
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
 
@@ -177,9 +178,11 @@ class ForestMotion:
 
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
-            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], target_z_pos - self.uav_z_pos_])
+            #delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], target_z_pos - self.uav_z_pos_])
+            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], 0])
         elif frame == self.LOCAL_FRAME_:
-            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_])
+            #delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_])
+            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], 0])
         else:
             return
 
@@ -446,7 +449,8 @@ class ForestMotion:
                 if self.turn_before_return_ == True:
                     rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
                     self.final_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_local_pos_) + self.uav_xy_global_pos_
-                    self.turn_uav_xy_global_pos_ = self.uav_xy_global_pos_
+                    rot_mat = np.array([[math.cos(self.initial_yaw_), -math.sin(self.initial_yaw_)],[math.sin(self.initial_yaw_), math.cos(self.initial_yaw_)]])
+                    self.turn_uav_xy_global_pos_ = np.dot(rot_mat, np.array([self.turn_radius_offset_, 0])) + self.uav_xy_global_pos_
                     #self.turn_uav_yaw_ = self.uav_yaw_
                     self.state_machine_ = self.TURN_STATE_
 

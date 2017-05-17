@@ -268,12 +268,12 @@ bool TreeTracking::searchTargetTreeFromDatabase()
   tree_db_.getTrees(trees);
   tf::Matrix3x3 rot_mat_; rot_mat_.setRPY(0, 0, -M_PI / 2);
   tf::Vector3 orthogonal_vec = rot_mat_ * initial_target_tree_direction_vec_;
-   
-  if (searching_method_ == 1) 
+
+  if (searching_method_ == 1)
     {
       float min_angle = 1e6;
       tf::Vector3 initial_target_tree_pos = target_trees_.at(0)->getPos() - initial_target_tree_direction_vec_ * first_tree_pos_margin_;
-      float previous_target_angle = 0;
+      float previous_target_angle = -0.5;
       if (target_trees_.size() != 1)
         {
           tf::Vector3 previous_target_from_initial_target_vec = target_trees_.back()->getPos() - initial_target_tree_pos;
@@ -287,7 +287,6 @@ bool TreeTracking::searchTargetTreeFromDatabase()
 	      //cout << "ignore: previous targe tree" << endl;
 	      continue;
 	    }
-	  
 	  tf::Vector3 from_initial_target_vec = (*it)->getPos() - initial_target_tree_pos;
 	  float distance_from_initial_target = initial_target_tree_direction_vec_.dot(from_initial_target_vec);
 	  float angle = acos(orthogonal_vec.dot(from_initial_target_vec) / from_initial_target_vec.length());
@@ -296,9 +295,9 @@ bool TreeTracking::searchTargetTreeFromDatabase()
 	      min_angle = angle;
 	      target_tree = *it;
 	    }
-	}      
-    } 
-  else if (searching_method_ == 2) 
+	}
+    }
+  else if (searching_method_ == 2)
     {
       float min_dist = 1e6;
       tf::Vector3 previous_target_tree_pos = target_trees_.back()->getPos();

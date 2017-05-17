@@ -108,7 +108,7 @@ class ForestMotion:
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
-        self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 3.0)
+        self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 4.0)
         self.deep_return_dist_ = rospy.get_param("~deep_return_dist", -0.6)
 
         self.visualization_ = rospy.get_param("~visualization", True)

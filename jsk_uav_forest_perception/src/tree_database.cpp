@@ -46,7 +46,6 @@ void TreeDataBase::add(const TreeHandlePtr new_tree)
 bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& tree_radius, const bool only_target)
 {
   bool new_tree = true;
-  bool do_update = true;
   float min_dist = 1e6;
   TreeHandlePtr target_tree;
   int tree_index = 0;
@@ -58,13 +57,9 @@ bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& t
       /* we assume that the distance of any two trees is more than min_ditance_ */
       if(dist < tree_margin_radius_)
 	{
-	  if(verbose_)
+          if(!new_tree)
             {
-              if(!new_tree)
-                {
-                  ROS_WARN("there are two trees which are to close to each other");
-                  do_update = false;
-                }
+              if(verbose_) ROS_WARN("there are two trees which are to close to each other");
             }
 	  new_tree = false;
 	}
@@ -92,14 +87,11 @@ bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& t
     }
   else
     {
-      if(do_update)
-        {
-          /* update the global pos of the tree */
-          target_tree->updatePos(tree_pos,false);
-          target_tree->setRadius(tree_radius);
-          if(verbose_) cout << "Database tree No." << tree_index << ": update, small diff:" << min_dist << endl;
-          return true;
-        }
+      /* update the global pos of the tree */
+      target_tree->updatePos(tree_pos,false);
+      target_tree->setRadius(tree_radius);
+      if(verbose_) cout << "Database tree No." << tree_index << ": update, small diff:" << min_dist << endl;
+      return true;
     }
 
   return false;

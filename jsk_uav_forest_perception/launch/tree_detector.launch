@@ -24,8 +24,7 @@
     <param name="visualization" value="true" />
     <param name="tree_radius_max" value="0.3" />
     <param name="tree_radius_min" value="0.08" />
-    <param name="min_distance" value="1.0" />
-    <param name="max_radius" value="1.0" />
+    <param name="tree_margin_radius" value="1.0" />
     <param name="valid_num" value="10" />
     <param name="searching_method" value="1" /> <!-- 1:narrow 2:deep-->
     <param name="narrow_searching_radius" value="4.2" />

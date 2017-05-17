@@ -30,8 +30,7 @@ bool operator>(const TreeHandlePtr& left, const TreeHandlePtr& right)
 TreeDataBase::TreeDataBase(ros::NodeHandle nh, ros::NodeHandle nhp):nh_(nh), nhp_(nhp)
 {
   trees_.resize(0);
-  nhp_.param("min_distance", min_distance_, 1.0); // 1.0[m]
-  nhp_.param("max_radius", max_radius_, 0.5); // 1.0[m]
+  nhp_.param("tree_margin_radius", tree_margin_radius_, 1.0); // 1.0[m]
   nhp_.param("valid_num", valid_num_, 7);
   nhp_.param("verbose", verbose_, false);
   nhp_.param("visualization_marker_topic_name", visualization_marker_topic_name_, string("/visualization_marker"));
@@ -56,12 +55,11 @@ bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& t
       size_t index = distance(trees_.begin(), it);
 
       /* we assume that the distance of any two trees is more than min_ditance_ */
-      if(dist < min_distance_)
+      if(dist < tree_margin_radius_)
 	{
-	  if(verbose_)
+          if(!new_tree)
             {
-              if(!new_tree)
-                ROS_WARN("there are two trees which are to close to each other");
+              if(verbose_) ROS_WARN("there are two trees which are to close to each other");
             }
 	  new_tree = false;
 	}
@@ -76,26 +74,23 @@ bool TreeDataBase::updateSingleTree(const tf::Vector3& tree_pos, const double& t
 	}
     }
 
-  if(min_dist < max_radius_)
+  /* add new tree if necessary */
+  if(new_tree)
+    {
+      if(!only_target)
+        {
+          TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, tree_pos));
+          new_tree->setRadius(tree_radius);
+          add(new_tree);
+          return true;
+        }
+    }
+  else
     {
       /* update the global pos of the tree */
       target_tree->updatePos(tree_pos,false);
       target_tree->setRadius(tree_radius);
       if(verbose_) cout << "Database tree No." << tree_index << ": update, small diff:" << min_dist << endl;
-      return true;
-    }
-  else
-    {
-      if(verbose_  && !only_target)
-	ROS_WARN("Database tree No.%d, lost the target tree, drift: %f, the nearest target location: [%f, %f, %f], prev target location: [%f, %f, %f]", tree_index, min_dist, target_tree->getPos().x(), target_tree->getPos().y(), target_tree->getPos().z(), tree_pos.x(), tree_pos.y(), tree_pos.z());
-    }
-
-  /* add new tree if necessary */
-  if(new_tree && !only_target)
-    {
-      TreeHandlePtr new_tree = TreeHandlePtr(new TreeHandle(nh_, nhp_, tree_pos));
-      new_tree->setRadius(tree_radius);
-      add(new_tree);
       return true;
     }
 

@@ -112,8 +112,7 @@ private:
   ros::NodeHandle nh_, nhp_;
 
   /* ros param */
-  double min_distance_; /* the min distance between two tree  */
-  double max_radius_;  /* the max radius to use for tree update  */
+  double tree_margin_radius_; /* the margin area to check the candidate position for a tree  */
   int valid_num_; /* the number of valid tree to  */
   bool verbose_;
   bool visualization_;

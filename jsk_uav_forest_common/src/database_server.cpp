@@ -61,7 +61,7 @@ public:
       transform_.setOrigin(tf::Vector3(trans[0], trans[1], trans[2]));
     else
       {
-        main_rate_ = 0;
+        //main_rate_ = 0;
         ROS_ERROR("no tf trans parameter");
       }
 
@@ -69,7 +69,7 @@ public:
       transform_.setRotation(tf::Quaternion(rot[0], rot[1], rot[2], rot[3]));
     else
       {
-        main_rate_ = 0;
+        //main_rate_ = 0;
         ROS_ERROR("no tf rot parameter");
       }
 

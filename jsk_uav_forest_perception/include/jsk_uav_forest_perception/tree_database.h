@@ -118,6 +118,7 @@ private:
   bool verbose_;
   bool visualization_;
   string visualization_marker_topic_name_;
+  double tree_cut_rate_;
 
   ros::Publisher pub_visualization_marker_;
 

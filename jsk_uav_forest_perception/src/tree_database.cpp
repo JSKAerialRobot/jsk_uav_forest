@@ -35,6 +35,7 @@ TreeDataBase::TreeDataBase(ros::NodeHandle nh, ros::NodeHandle nhp):nh_(nh), nhp
   nhp_.param("valid_num", valid_num_, 7);
   nhp_.param("verbose", verbose_, false);
   nhp_.param("visualization_marker_topic_name", visualization_marker_topic_name_, string("/visualization_marker"));
+  nhp_.param("tree_cut_rate", tree_cut_rate_, 0.1);
   pub_visualization_marker_ = nh_.advertise<visualization_msgs::MarkerArray>(visualization_marker_topic_name_, 1);
 }
 
@@ -204,6 +205,8 @@ bool TreeDataBase::load(string file_name)
   ss_header.str(str);
   ss_header >> header1 >> tree_num >> header2 >> center_tree_index;
   ROS_INFO("%s: %d, %s: %d", header1.c_str(), tree_num, header2.c_str(), center_tree_index);
+  
+  int all_vote = 0;
 
   /* get the tree data */
   for(int i = 0; i < tree_num; i++)
@@ -219,14 +222,24 @@ bool TreeDataBase::load(string file_name)
       new_tree->setRadius(radius);
       new_tree->setVote(vote);
       add(new_tree);
-
+      all_vote += vote;
+      
       if(i == center_tree_index) center_tree_ = new_tree;
     }
 
+  /* filter trees */
+  update(); //sort
+  int cut_vote = 0;
+  for (int i = tree_num - 1; i > 0; i--) {
+    cut_vote += trees_.at(i)->getVote();
+    trees_.pop_back();
+    if (cut_vote > all_vote * tree_cut_rate_) break;
+  } 
+  valid_num_ = tree_num;
   return true;
 }
 
-int  TreeDataBase::getIndex(TreeHandlePtr target_tree)
+int TreeDataBase::getIndex(TreeHandlePtr target_tree)
 {
   int i = 0;
   for (auto &tree : trees_)

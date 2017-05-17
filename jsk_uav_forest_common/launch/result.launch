@@ -3,12 +3,14 @@
   <arg name="file_name" default="test" />
   <arg name="tf_yaml_file" default="$(find jsk_uav_forest_common)/data/$(arg file_name)-map.yaml" />
   <arg name="tree_yaml_file" default="$(find jsk_uav_forest_common)/data/$(arg file_name)-trees.yaml" />
+  <arg name="tree_cut_rate" default="0.1" />
 
   <!-- tree data -->
   <node pkg="jsk_uav_forest_common" type="database_server" name="tree_database_server" output="screen" >
     <param name="valid_num" value="15" />
     <param name="tree_database_file_name" value="$(arg tree_yaml_file)" />
     <rosparam file="$(arg tf_yaml_file)" command="load" />
+    <param name="tree_cut_rate" value="$(arg tree_cut_rate)" />
   </node>
 
   <!-- 2d map -->

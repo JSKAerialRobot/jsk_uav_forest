@@ -26,5 +26,4 @@
     <param name="visualization" value="$(arg visualization)" />
     <rosparam file="$(find jsk_uav_forest_motion)/config/motion/motion.yaml" command="load"/>
   </node>
-
 </launch>

@@ -2,6 +2,7 @@
 
 control_rate : 20
 
+#navigation
 takeoff_height : 1.6
 nav_xy_pos_pgain : 0.9
 nav_z_pos_pgain : 0.8
@@ -12,7 +13,18 @@ nav_yaw_vel_thresh : 0.6
 nav_pos_convergence_thresh : 0.1
 nav_yaw_convergence_thresh : 0.15
 nav_vel_converge0.8_thresh : 1.0
+takeoff_forward_offset : 3.0 # positive value
+deep_return_dist : -1.2 # negative value
+turn_radius_offset : -1.0 # negative value
+
+#circle motion
 circle_radius : 1.1
 circle_y_vel : 0.3
 circle_motion_height_step : 0.5
-deep_return_dist: -1.2 # must be negative!
+
+#obstacle avoidance
+cluster_num_min : 10
+safe_zone_radius : 1.0
+drone_obstacle_ignore_maximum_radius : 0.90
+drone_safety_minimum_radius : 0.85
+avoid_vel : 0.5

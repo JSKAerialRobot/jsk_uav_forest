@@ -24,7 +24,6 @@
     <param name="turn_before_return" value="$(arg turn_before_return)" />
     <param name="uav_odom_sub_topic_name" value="$(arg uav_odom_topic_name)"/>
     <param name="visualization" value="$(arg visualization)" />
-    <rosparam file="$(find jsk_uav_forest_motion)/config/circle_motion/circle_motion.yaml" command="load"/>
+    <rosparam file="$(find jsk_uav_forest_motion)/config/motion/motion.yaml" command="load"/>
   </node>
-
 </launch>

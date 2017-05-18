@@ -89,8 +89,8 @@ class ForestMotion:
         self.set_first_tree_service_name_ = rospy.get_param("~set_first_tree_service_name_", "/set_first_tree")
 
         self.control_rate_ = rospy.get_param("~control_rate", 20)
-        self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
-        self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
+        
+        #navigation
         self.takeoff_height_ = rospy.get_param("~takeoff_height", 1.5)
         self.nav_xy_pos_pgain_ = rospy.get_param("~nav_xy_pos_pgain", 1.0)
         self.nav_z_pos_pgain_ = rospy.get_param("~nav_z_pos_pgain", 1.0)
@@ -101,19 +101,26 @@ class ForestMotion:
         self.nav_pos_convergence_thresh_ = rospy.get_param("~nav_pos_convergence_thresh", 0.1)
         self.nav_yaw_convergence_thresh_ = rospy.get_param("~nav_yaw_convergence_thresh", 0.05)
         self.nav_vel_convergence_thresh_ = rospy.get_param("~nav_vel_convergence_thresh", 0.1)
+        self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 4.0)
+        self.deep_return_dist_ = rospy.get_param("~deep_return_dist", -0.6)
+        self.turn_radius_offset_ = rospy.get_param("~turn_radius_offset", -1.0)    
+        
+        #circle motion
         self.circle_radius_ = rospy.get_param("~circle_radius", 1.0)
         self.circle_y_vel_ = rospy.get_param("~circle_y_vel", 0.5)
+        
+        #obstacle avoidance
         self.cluster_num_min_ = rospy.get_param("~cluster_num_min", 10)
         self.safe_zone_radius_ = rospy.get_param("~safe_zone", 1.0)
         self.drone_obstacle_ignore_maximum_radius_ = rospy.get_param("~drone_obstacle_ignore_maximum_radius", 0.90)
         self.drone_safety_minimum_radius_ = rospy.get_param("~drone_safety_minimum_radius", 0.85)
         self.avoid_vel_ = rospy.get_param("~avoid_vel", 0.5)
-        self.takeoff_forward_offset_ = rospy.get_param("~takeoff_forward_offset", 4.0)
-        self.deep_return_dist_ = rospy.get_param("~deep_return_dist", -0.6)
-        self.turn_radius_offset_ = rospy.get_param("~turn_radius_offset", -1.0)
         
-        self.visualization_ = rospy.get_param("~visualization", True)
+        #flag
         self.task_kind_ = rospy.get_param("~task_kind", 1) #1 yosen 2 honsen 3 kesshou
+        self.do_avoidance_ = rospy.get_param("~do_avoidance", False)
+        self.turn_before_return_ = rospy.get_param("~turn_before_return", True)
+        self.visualization_ = rospy.get_param("~visualization", True)
 
         ## task3 different
         self.circle_motion_times_ = 1

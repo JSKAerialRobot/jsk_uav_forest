@@ -62,7 +62,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("tree_circle_fitting", tree_circle_fitting_, true);
 
   nhp_.param("first_tree_pos_margin", first_tree_pos_margin_, 0.3); //should be positive
-  nhp_.param("first_tree_dist_thresh_", first_tree_dist_thresh_, 3.0); // 3[m]
+  nhp_.param("first_tree_dist_thresh", first_tree_dist_thresh_, 3.0); // 3[m]
 
   /* tree circle fitting */
   nhp_.param("tree_radius_max", tree_radius_max_, 0.3);
@@ -75,7 +75,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("narrow_searching_radius", narrow_searching_radius_, 5.0);
   nhp_.param("narrow_angle_diff_min", narrow_angle_diff_min_, 0.1);
   /* deep searching method */
-  nhp_.param("max_orthogonal_dist_", max_orthogonal_dist_, 3.0);
+  nhp_.param("max_orthogonal_dist", max_orthogonal_dist_, 3.0);
 
   sub_vision_detection_ = nh_.subscribe(vision_detection_topic_name_, 1, &TreeTracking::visionDetectionCallback, this);
   sub_uav_odom_ = nh_.subscribe(uav_odom_topic_name_, 1, &TreeTracking::uavOdomCallback, this);

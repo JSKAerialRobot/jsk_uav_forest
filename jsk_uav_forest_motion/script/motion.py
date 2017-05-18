@@ -457,7 +457,10 @@ class ForestMotion:
                     rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])
                     self.final_target_tree_xy_global_pos_ = np.dot(rot_mat, self.tree_xy_local_pos_) + self.uav_xy_global_pos_
                     rot_mat = np.array([[math.cos(self.initial_yaw_), -math.sin(self.initial_yaw_)],[math.sin(self.initial_yaw_), math.cos(self.initial_yaw_)]])
-                    self.turn_uav_xy_global_pos_ = np.dot(rot_mat, np.array([self.turn_radius_offset_, 0])) + self.uav_xy_global_pos_
+                    if self.task_kind_ != 3:
+                        self.turn_uav_xy_global_pos_ = np.dot(rot_mat, np.array([self.turn_radius_offset_, 0])) + self.uav_xy_global_pos_
+                    else:
+                        self.turn_uav_xy_global_pos_ = self.uav_xy_global_pos_
                     #self.turn_uav_yaw_ = self.uav_yaw_
                     self.state_machine_ = self.TURN_STATE_
 

@@ -290,7 +290,8 @@ bool TreeTracking::searchTargetTreeFromDatabase()
 	  tf::Vector3 from_initial_target_vec = (*it)->getPos() - initial_target_tree_pos;
 	  float distance_from_initial_target = initial_target_tree_direction_vec_.dot(from_initial_target_vec);
 	  float angle = acos(orthogonal_vec.dot(from_initial_target_vec) / from_initial_target_vec.length());
-	  if(angle < min_angle && distance_from_initial_target > 0 && from_initial_target_vec.length() < narrow_searching_radius_ && angle > previous_target_angle + narrow_angle_diff_min_)
+          ROS_WARN("angle:%f dfit:%f len:%f ", angle, distance_from_initial_target, from_initial_target_vec.length());
+          if(angle < min_angle && distance_from_initial_target > 0 && from_initial_target_vec.length() < narrow_searching_radius_ && angle > previous_target_angle + narrow_angle_diff_min_)
 	    {
 	      min_angle = angle;
 	      target_tree = *it;

@@ -12,8 +12,8 @@ nav_z_vel_thresh : 1.0
 nav_yaw_vel_thresh : 0.6
 nav_pos_convergence_thresh : 0.1
 nav_yaw_convergence_thresh : 0.15
-nav_vel_converge0.8_thresh : 1.0
-takeoff_forward_offset : 3.0 # positive value
+nav_vel_convergence_thresh : 1.0
+takeoff_forward_offset : 4.0 # positive value
 deep_return_dist : -1.2 # negative value
 turn_radius_offset : -1.0 # negative value
 

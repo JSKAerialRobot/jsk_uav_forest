@@ -27,9 +27,9 @@
     <param name="tree_radius_min" value="0.08" />
     <param name="tree_scan_angle_thre" value="0.1" />
     <param name="tree_circle_regulation_thre" value="0.01" />
-    <param name="first_tree_pos_margin" value="1.0" /> <!-- positive value -->
+    <param name="first_tree_pos_margin" value="0.5" /> <!-- positive value -->
     <param name="first_tree_dist_thresh" value="3.0" /> <!-- positive value -->   
-    <param name="narrow_searching_radius" value="5.0" />
+    <param name="narrow_searching_radius" value="4.2" />
     <param name="narrow_angle_diff_min" value="0.05" />
     <param name="max_orthogonal_dist" value="3.0" />
     <param name="only_target" value="false" />

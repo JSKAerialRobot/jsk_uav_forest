@@ -67,6 +67,7 @@ namespace vision_detection
     int max_contour_id = 0;
     cv::Mat target_tree_area;
     int tree_index = 0;
+#if 0
     for ( vector<int>::iterator it = cluster_index.begin(); it != cluster_index.end(); ++it)
       {
         float laser_direction = *it * scan_msg->angle_increment + scan_msg->angle_min;
@@ -144,8 +145,27 @@ namespace vision_detection
     /* find the target tree */
     ROS_WARN("conditional hsv filter based vision detectoion: find the target tree.");
     return true;
-  }
+#else
+    float min_direction = 1e6;
+    for ( vector<int>::iterator it = cluster_index.begin(); it != cluster_index.end(); ++it)
+      {
+        float laser_direction = *it * scan_msg->angle_increment + scan_msg->angle_min;
+        float laser_distance = scan_msg->ranges[*it];
 
+        if(laser_distance < 6) // 5[m]
+          {
+            if(fabs(laser_direction) < min_direction )
+              {
+                target_tree_index = *it;
+                min_direction = fabs(laser_direction);
+                ROS_INFO("update the tree, %f, %f",laser_direction, laser_distance);
+              }
+          }
+      }
+    ROS_ERROR("find the tree");
+    return true;
+#endif
+  }
 };
 
 

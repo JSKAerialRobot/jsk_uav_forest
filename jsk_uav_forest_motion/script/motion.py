@@ -186,11 +186,11 @@ class ForestMotion:
 
     def isConvergent(self, frame, target_xy_pos, target_z_pos, target_yaw):
         if frame == self.GLOBAL_FRAME_:
-            #delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], target_z_pos - self.uav_z_pos_])
-            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], 0])
+            delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], target_z_pos - self.uav_z_pos_])
+            #delta_pos = np.array([target_xy_pos[0] - self.uav_xy_global_pos_[0], target_xy_pos[1] - self.uav_xy_global_pos_[1], 0])
         elif frame == self.LOCAL_FRAME_:
-            #delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_])
-            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], 0])
+            delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], target_z_pos - self.uav_z_pos_])
+            #delta_pos = np.array([target_xy_pos[0], target_xy_pos[1], 0])
         else:
             return
 

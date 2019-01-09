@@ -100,6 +100,7 @@ private:
   double tree_scan_angle_thre_;
   double tree_circle_regulation_thre_;
   double first_tree_dist_thresh_;
+  double urg_yaw_offset_;
 
   int searching_method_;
   double narrow_searching_radius_;

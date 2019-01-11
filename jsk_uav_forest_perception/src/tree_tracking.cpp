@@ -60,6 +60,7 @@ TreeTracking::TreeTracking(ros::NodeHandle nh, ros::NodeHandle nhp):
   nhp_.param("verbose", verbose_, false);
   nhp_.param("visualization", visualization_, false);
   nhp_.param("tree_circle_fitting", tree_circle_fitting_, true);
+  nhp_.param("urg_yaw_offset", urg_yaw_offset_, 0.0);
 
   nhp_.param("first_tree_pos_margin", first_tree_pos_margin_, 0.3); //should be positive
   nhp_.param("first_tree_dist_thresh", first_tree_dist_thresh_, 3.0); // 3[m]
@@ -98,7 +99,7 @@ void TreeTracking::visionDetectionCallback(const geometry_msgs::Vector3StampedCo
   pub_stop_vision_detection_.publish(stop_msg);
 
   tf::Matrix3x3 rotation;
-  rotation.setRPY(0, 0, vision_detection_msg->vector.y + uav_yaw_);
+  rotation.setRPY(0, 0, vision_detection_msg->vector.y + uav_yaw_ + urg_yaw_offset_);
   tf::Vector3 target_tree_global_location = uav_odom_ + rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
   initial_target_tree_direction_vec_ = rotation * tf::Vector3(vision_detection_msg->vector.z, 0, 0);
   initial_target_tree_direction_vec_ /= initial_target_tree_direction_vec_.length(); //normalize
@@ -196,7 +197,7 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 	  double scan_angle_real = scan_point_num * scan_msg->angle_increment;
 	  double scan_angle_virtual = M_PI - 2 * acos(tree_radius / tree_center_pos.length());
 	  /* tree position filter */
-	  tf::Matrix3x3 rotation; rotation.setRPY(0, 0, uav_yaw_);
+	  tf::Matrix3x3 rotation; rotation.setRPY(0, 0, uav_yaw_ + urg_yaw_offset_);
 	  tf::Vector3 tree_center_global_location = uav_odom_ + rotation * tf::Vector3(tree_center_pos.x(), tree_center_pos.y(), 0);
 	  tf::Vector3 initial_target_tree_pos = target_trees_.at(0)->getPos();
 	  double projected_length_from_initial_target = initial_target_tree_direction_vec_.dot(tree_center_global_location - initial_target_tree_pos);	  
@@ -222,7 +223,7 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 
   tf::Vector3 target_tree_global_location = target_trees_.back()->getPos();
   tf::Matrix3x3 rotation;
-  rotation.setRPY(0, 0, -uav_yaw_);
+  rotation.setRPY(0, 0, -uav_yaw_ - urg_yaw_offset_);
   tf::Vector3 target_tree_local_location = rotation * (target_tree_global_location - uav_odom_);
   target_tree_local_location.setZ(0);
   if(prev_vote ==  target_trees_.back()->getVote())

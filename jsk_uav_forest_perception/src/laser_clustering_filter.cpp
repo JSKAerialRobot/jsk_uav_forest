@@ -34,4 +34,4 @@
 #include "pluginlib/class_list_macros.h"
 
 
-PLUGINLIB_DECLARE_CLASS(laser_filters, LaserClusteringFilter, laser_filters::LaserClusteringFilter, filters::FilterBase<sensor_msgs::LaserScan>)
+PLUGINLIB_EXPORT_CLASS(laser_filters::LaserClusteringFilter, filters::FilterBase<sensor_msgs::LaserScan>)

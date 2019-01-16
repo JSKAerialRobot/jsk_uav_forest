@@ -13,7 +13,7 @@
 
   <!-- Odometry -->
   <node pkg="jsk_uav_forest_common" type="odom_generator.py" name="odom_gen" output="screen" >
-    <param name="use_lidar" value="True" />
+    <param name="use_lidar" value="False" />
     <param name="use_guidance_vel" value="True" />
     <param name="lidar_tc" value="0.5" />
     <param name="lidar_noise_cut_thresh" value="0.5" />

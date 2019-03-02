@@ -163,7 +163,7 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 
       /* calculate the distance */
       tf::Matrix3x3 rotation;
-      rotation.setRPY(0, 0, *it * scan_msg->angle_increment + scan_msg->angle_min + uav_yaw_);
+      rotation.setRPY(0, 0, *it * scan_msg->angle_increment + scan_msg->angle_min + uav_yaw_ + urg_yaw_offset_);
       tree_global_location = uav_odom_ + rotation * tf::Vector3(scan_msg->ranges[*it], 0, 0);
 
       /* add tree to the database */
@@ -223,7 +223,7 @@ void TreeTracking::laserScanCallback(const sensor_msgs::LaserScanConstPtr& scan_
 
   tf::Vector3 target_tree_global_location = target_trees_.back()->getPos();
   tf::Matrix3x3 rotation;
-  rotation.setRPY(0, 0, -uav_yaw_ - urg_yaw_offset_);
+  rotation.setRPY(0, 0, -uav_yaw_);
   tf::Vector3 target_tree_local_location = rotation * (target_tree_global_location - uav_odom_);
   target_tree_local_location.setZ(0);
   if(prev_vote ==  target_trees_.back()->getVote())

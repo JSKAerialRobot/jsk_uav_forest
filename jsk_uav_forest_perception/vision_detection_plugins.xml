@@ -9,5 +9,10 @@
       Conditional HSV filter.
     </description>
   </class>
+  <class name="vision_detection/NoImageFilter" type="vision_detection::NoImageFilter" base_class_type="vision_detection::DetectorBase">
+    <description>
+      No image filter (for real forest environment).
+    </description>
+  </class>
 
 </library>

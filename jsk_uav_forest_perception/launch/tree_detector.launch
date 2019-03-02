@@ -3,11 +3,24 @@
   <arg name="simulation" default="false" />
   <arg name="uav_odom_topic_name" default="uav_odom" />
   <arg name="image_name" default="/camera/image_rect" />
+  <arg name="real_forest" default="false"/>
 
-  <!-- vision base -->
-  <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
-    <arg name="image_name" value="$(arg image_name)" unless="$(arg simulation)"/>
-  </include>
+  <group unless="$(arg real_forest)">
+    <!-- vision base -->
+    <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
+      <arg name="image_name" value="$(arg image_name)" unless="$(arg simulation)"/>
+    </include>
+  </group>
+
+  <group if="$(arg real_forest)">
+    <include file="$(find jsk_uav_forest_perception)/launch/image_process.launch">
+      <arg name="plugin_name" default="NoImageFilter" />
+      <arg name="image_name" value="/dummy_image"/>
+    </include>
+
+    <node pkg="jsk_uav_forest_perception" type="dummy_image_publisher.py" name="dummy_image_publisher"/>
+  </group>
+
 
   <!-- 2D laser base -->
   <include file="$(find jsk_uav_forest_perception)/launch/laser_process.launch">
@@ -18,7 +31,7 @@
     <param name="laser_scan_topic_name" value="/scan_clustered" />
     <param name="uav_odom_topic_name" value="/ground_truth/state" if="$(arg simulation)"/>
     <param name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" unless="$(arg simulation)"/>
-    <param name="filter_rate" value="0.8" />    
+    <param name="filter_rate" value="0.8" />
     <param name="uav_tilt_thre" value="0.1" />
     <param name="tree_margin_radius" value="1.0" />
     <param name="valid_num" value="15" />
@@ -28,7 +41,7 @@
     <param name="tree_scan_angle_thre" value="0.1" />
     <param name="tree_circle_regulation_thre" value="0.02" />
     <param name="first_tree_pos_margin" value="0.5" /> <!-- positive value -->
-    <param name="first_tree_dist_thresh" value="3.0" /> <!-- positive value -->   
+    <param name="first_tree_dist_thresh" value="3.0" /> <!-- positive value -->
     <param name="narrow_searching_radius" value="4.2" />
     <param name="narrow_angle_diff_min" value="0.05" />
     <param name="max_orthogonal_dist" value="3.0" />

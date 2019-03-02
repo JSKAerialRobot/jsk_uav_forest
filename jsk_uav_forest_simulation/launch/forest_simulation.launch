@@ -14,6 +14,7 @@
   <arg name="collision" default="false" />
   <arg name="do_mapping" default="true" />
   <arg name="target_num" default="1" />
+  <arg name="real_forest" default="false"/>
 
   <arg name="start_x" value="-8"/>
   <arg name="start_y" value="0" unless="$(arg collision)"/>
@@ -47,6 +48,7 @@
     <arg name="do_avoidance" value="$(arg do_avoidance)" />
     <arg name="turn_before_return" value="$(arg turn_before_return)" />
     <arg name="target_num" value="$(arg target_num)" />
+    <arg name="real_forest" value="$(arg real_forest)" />
   </include>
 
   <!-- 2D Mapping -->

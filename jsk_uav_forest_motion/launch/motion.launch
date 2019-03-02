@@ -8,11 +8,13 @@
   <arg name="turn_before_return" default="True" />
   <arg name="do_avoidance" default="False" />
   <arg name="visualization" default="True" />
+  <arg name="real_forest" default="False"/>
 
   ##### Perception Node #####
   <include file="$(find jsk_uav_forest_perception)/launch/tree_detector.launch">
     <arg name="simulation" value="True" unless="$(arg use_dji)" />
     <arg name="uav_odom_topic_name" value="$(arg uav_odom_topic_name)" />
+    <arg name="real_forest" value="$(arg real_forest)"/>
   </include>
 
   ##### Motion Node #####

@@ -1,4 +1,5 @@
 # Hector quadrotor for simulation
+- git:
     local-name: hector_quadrotor
     uri: https://github.com/tu-darmstadt-ros-pkg/hector_quadrotor.git
     version: kinetic-devel

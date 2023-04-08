@@ -18,8 +18,8 @@ import pytz
 class Mapping:
     def init(self):
         rospy.init_node('mapping', anonymous=True)
-        self.map_frame = rospy.get_param("~map_frame", "/map")
-        self.odom_frame = rospy.get_param("~odom_frame", "/world")
+        self.map_frame = rospy.get_param("~map_frame", "map")
+        self.odom_frame = rospy.get_param("~odom_frame", "world")
         self.mapping_control_sub_topic_name = rospy.get_param("~mapping_control_sub_topic_name", "/database_control")
 
         self.mapping_process = None

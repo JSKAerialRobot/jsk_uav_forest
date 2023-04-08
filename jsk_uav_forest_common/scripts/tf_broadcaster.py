@@ -8,13 +8,13 @@ from nav_msgs.msg import Odometry
 
 class odom_tf:
     def init(self):
-        self.uav_odom_topic_name = rospy.get_param("~uav_odom_topic_name", "/modified_odom")
+        self.uav_odom_topic_name = rospy.get_param("~uav_odom_topic_name", "modified_odom")
         self.use_mapping = rospy.get_param("~use_mapping", False)
-        self.map_frame_name = rospy.get_param("~map_frame_name", "/map")
-        self.world_frame_name = rospy.get_param("~world_frame_name", "/world")
-        self.base_frame_name = rospy.get_param("~base_name", "/base_link")
-        self.base_footprint_frame_name = rospy.get_param("~base_footprint_name", "/base_footprint")
-        self.laser_frame_name = rospy.get_param("~laser_frame_name", "/laser")
+        self.map_frame_name = rospy.get_param("~map_frame_name", "map")
+        self.world_frame_name = rospy.get_param("~world_frame_name", "world")
+        self.base_frame_name = rospy.get_param("~base_name", "base_link")
+        self.base_footprint_frame_name = rospy.get_param("~base_footprint_name", "base_footprint")
+        self.laser_frame_name = rospy.get_param("~laser_frame_name", "laser")
 
         rospy.Subscriber(self.uav_odom_topic_name, Odometry, self.odometryCallback)
 

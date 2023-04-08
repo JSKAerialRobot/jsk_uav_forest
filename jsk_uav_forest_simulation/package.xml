@@ -21,7 +21,12 @@
   <run_depend>geometry_msgs</run_depend>
   <run_depend>gazebo_plugins</run_depend>
   <run_depend>gazebo_ros</run_depend>
+
+  <run_depend>hector_gazebo</run_depend>
+  <run_depend>hector_localization</run_depend>
+  <run_depend>hector_models</run_depend>
   <run_depend>hector_quadrotor_gazebo</run_depend>
+  <run_depend>hector_slam</run_depend>
 
   <export>
     <gazebo_ros gazebo_model_path="${prefix}/gazebo_model/models" />

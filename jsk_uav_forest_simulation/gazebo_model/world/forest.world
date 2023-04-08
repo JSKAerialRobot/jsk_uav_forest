@@ -160,7 +160,7 @@
       </include>
     </model>
     
-    <model name="sub_target_tree9" >
+    <model name="sub_target_tree13" >
       <pose>4.5 -4.2 0 0 0 0</pose>
       <include>
         <uri>model://tree</uri>

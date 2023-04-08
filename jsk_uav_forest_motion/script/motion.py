@@ -12,6 +12,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String, Float32, Bool, ColorRGBA, Empty
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger, TriggerResponse, SetBool
+from hector_uav_msgs.srv import EnableMotors
 
 from jsk_rviz_plugins.msg import OverlayText
 
@@ -154,7 +155,17 @@ class ForestMotion:
         self.task_start_time_ = rospy.Time.now()
         self.task_start_ = True
         self.task_start_sub_.unregister()
-    
+
+        if not self.use_dji_ :
+            # send motor enable request to hector quadrotor
+            srv_name = 'enable_motors'
+            rospy.wait_for_service(srv_name)
+            try:
+                client = rospy.ServiceProxy(srv_name, EnableMotors)
+                res = client(True)
+            except rospy.ServiceException, e:
+                print('Service call failed: {}'.format(e))
+
     def odomCallback(self, msg):
         self.odom_ = msg
         self.uav_xy_global_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])

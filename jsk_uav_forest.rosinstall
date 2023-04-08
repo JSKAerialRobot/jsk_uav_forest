@@ -1,30 +1,7 @@
-
-# Hector related repository: use indigo version
-- git:
-    local-name: hector_gazebo
-    uri: https://github.com/tu-darmstadt-ros-pkg/hector_gazebo.git
-    version: indigo-devel
-- git:
-    local-name: hector_localization
-    uri: https://github.com/tu-darmstadt-ros-pkg/hector_localization.git
-    version: catkin
-- git:
-    local-name: hector_models
-    uri: https://github.com/tu-darmstadt-ros-pkg/hector_models.git
-    version: indigo-devel
-- git:
+# Hector quadrotor for simulation
     local-name: hector_quadrotor
     uri: https://github.com/tu-darmstadt-ros-pkg/hector_quadrotor.git
-    version: indigo-devel
-- git:
-    local-name: hector_slam
-    uri: https://github.com/tu-darmstadt-ros-pkg/hector_slam.git
-    version: catkin
-# indigo version needs "driver_based" which is not supported in kinetic
-- git:
-    local-name: driver_comm
-    uri: https://github.com/ros-drivers/driver_common.git
-    version: indigo-devel
+    version: kinetic-devel
 
 # DJI related repo
 - git:
@@ -36,10 +13,3 @@
     local-name: guidance
     uri: https://github.com/tongtybj/Guidance-SDK-ROS.git
     version: dependency
-
-#usb cam
-- git:
-    local-name: usb_cam
-    uri: https://github.com/bosch-ros-pkg/usb_cam.git
-    version: master
-

@@ -123,7 +123,7 @@ void TreeDataBase::visualization(std_msgs::Header header)
     if(index == valid_num_) break;
 
     visualization_msgs::Marker marker;
-    marker.header.frame_id = "/world";
+    marker.header.frame_id = "world";
     marker.header.stamp = ros::Time::now();
     marker.ns = "tree_diameter";
     marker.id = index;

@@ -9,8 +9,8 @@
 
   <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen" >
     <remap from = "scan" to = "scan_for_map" />
-    <param name = "odom_frame" value = "/world" />
-    <param name = "base_frame" value = "/base_footprint" />
+    <param name = "odom_frame" value = "world" />
+    <param name = "base_frame" value = "base_footprint" />
   </node>
 
 </launch>

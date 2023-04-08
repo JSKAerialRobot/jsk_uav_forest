@@ -83,8 +83,8 @@ public:
         ROS_ERROR("no tree dtatbase file");
       }
 
-    nhp_.param("map_frame", map_frame_, string("/map"));
-    nhp_.param("odom_frame", odom_frame_, string("/world"));
+    nhp_.param("map_frame", map_frame_, string("map"));
+    nhp_.param("odom_frame", odom_frame_, string("world"));
 
     if(main_rate_ > 0)
       {

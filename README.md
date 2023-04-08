@@ -23,11 +23,6 @@ catkin build
 
 ## how to run program in simulation
 
-- run in gazebo by manual operation
-```
-$ roslaunch jsk_uav_forest_simulation forest_simulation.launch manual:=true
-```
-
 - run in gazebo by autonomous perception and motion
 1. task1 
 ```
@@ -42,7 +37,14 @@ roslaunch jsk_uav_forest_simulation forest_simulation.launch task_kind:=2 circle
 roslaunch jsk_uav_forest_simulation forest_simulation.launch task_kind:=3 target_num:=3
 ```
 
-start by clicking the ```start``` button in the rqt_gui
+start by clicking the `Send Topic` button in the left-bottom corner of RVIZ
+
+- run in gazebo by manual operation
+```
+$ roslaunch jsk_uav_forest_simulation forest_simulation.launch manual:=true
+```
+
+use terminal to operate the quadrotor
 
 
 ## forest challenge (using DJI M100 + DJI Guidance + Pointgrey Chameleon3 + Hokuyo UST20LX)

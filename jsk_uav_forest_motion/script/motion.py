@@ -12,6 +12,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String, Float32, Bool, ColorRGBA, Empty
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger, TriggerResponse, SetBool
+from hector_uav_msgs.srv import EnableMotors
 
 from jsk_rviz_plugins.msg import OverlayText
 
@@ -154,7 +155,17 @@ class ForestMotion:
         self.task_start_time_ = rospy.Time.now()
         self.task_start_ = True
         self.task_start_sub_.unregister()
-    
+
+        if not self.use_dji_ :
+            # send motor enable request to hector quadrotor
+            srv_name = 'enable_motors'
+            rospy.wait_for_service(srv_name)
+            try:
+                client = rospy.ServiceProxy(srv_name, EnableMotors)
+                res = client(True)
+            except rospy.ServiceException as e:
+                print('Service call failed: {}'.format(e))
+
     def odomCallback(self, msg):
         self.odom_ = msg
         self.uav_xy_global_pos_ = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
@@ -293,7 +304,7 @@ class ForestMotion:
             if self.tree_cluster_.ranges[i] > 0:
                 # check whether the obstacle is big enough
                 big_cluster = True
-                for j in range (-self.cluster_num_min_ / 2, self.cluster_num_min_ / 2):
+                for j in range (-self.cluster_num_min_ // 2, self.cluster_num_min_ // 2):
                     if math.isnan(self.tree_cluster_.ranges[i + j]):
                         big_cluster = False
                         break
@@ -437,8 +448,8 @@ class ForestMotion:
                             else:
                                 self.target_count_ = self.target_num_
                                 rospy.logerr("can not get next target tree")
-                        except rospy.ServiceException, e:
-                            print "Service call failed: %s"%e
+                        except rospy.ServiceException as e:
+                            print('Service call failed: {}'.format(e))
                     
                     if self.target_count_ == self.target_num_:
                         rospy.wait_for_service(self.set_first_tree_service_name_)
@@ -451,8 +462,8 @@ class ForestMotion:
                                 self.tree_pos_update_flag_ = False
                                 time.sleep(0.5)
                                 return
-                        except rospy.ServiceException, e:
-                            print "Service call failed: %s"%e
+                        except rospy.ServiceException as e:
+                            print('Service call failed: {}'.format(e))
 
                 if self.turn_before_return_ == True:
                     rot_mat = np.array([[math.cos(self.uav_yaw_), -math.sin(self.uav_yaw_)],[math.sin(self.uav_yaw_), math.cos(self.uav_yaw_)]])

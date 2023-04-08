@@ -160,7 +160,7 @@
       </include>
     </model>
     
-    <model name="sub_target_tree9" >
+    <model name="sub_target_tree13" >
       <pose>4.5 -4.2 0 0 0 0</pose>
       <include>
         <uri>model://tree</uri>
@@ -169,7 +169,7 @@
 
     <!-- Please check the spefic rule: http://www.lsse.kyutech.ac.jp/~sociorobo/ja/forestdrone2016r -->
     <model name="red_band">
-      <pose>0 0 0.8 0 0 0</pose>
+      <pose>0 0 1.0 0 0 0</pose>
       <static>1</static>
       <link name="band" >
         <pose>0 0 0 0 0 0</pose>
